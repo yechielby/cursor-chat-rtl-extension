@@ -1,0 +1,67 @@
+{
+  "name": "cursor-chat-rtl",
+  "displayName": "Cursor Chat RTL Support",
+  "description": "RTL for Cursor IDE chat only (Hebrew, Arabic, Persian). Patches the Cursor application on disk (workbench), not VS Code. After activating, fully quit and reopen Cursor — Reload Window is not always enough.",
+  "version": "0.1.0",
+  "publisher": "yechielby",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YechielBy/cursor-chat-rtl-extension"
+  },
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "arabic",
+    "bidi",
+    "bidirectional",
+    "cursor",
+    "cursor-app",
+    "cursor-chat",
+    "cursor-ide",
+    "cursor-only",
+    "farsi",
+    "hebrew",
+    "persian",
+    "rtl",
+    "rtl-support"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "icon": "cursor-chat-rtl-logo.png",
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursor-rtl.add",
+        "title": "Cursor Chat RTL: Activate"
+      },
+      {
+        "command": "cursor-rtl.remove",
+        "title": "Cursor Chat RTL: Deactivate"
+      },
+      {
+        "command": "cursor-rtl.status",
+        "title": "Cursor Chat RTL: Check Status"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
+    "compile": "node esbuild.mjs",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.94.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}
