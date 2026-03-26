@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import { constants as fsConstants } from 'fs';
 import * as path from 'path';
 import type { CursorInstallation, WorkbenchEntry } from './finder.js';
 import type { RtlMode, RtlStatus } from './types.js';
@@ -11,6 +12,15 @@ import {
     RTL_MODE_ACTIVE_MARKER,
 } from './content.js';
 import { exists } from './utils.js';
+
+async function isWritable(dir: string): Promise<boolean> {
+    try {
+        await fs.access(dir, fsConstants.W_OK);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 async function htmlHasMarker(htmlPath: string): Promise<boolean> {
     try {
@@ -178,6 +188,12 @@ export async function addRtl(
     const messages: string[] = [];
     let changed = false;
 
+    if (!(await isWritable(installation.workbenchDir))) {
+        messages.push(`  Skipped: ${installation.workbenchDir}`);
+        messages.push(`       Directory not writable — try running Cursor as Administrator`);
+        return { messages, changed: false };
+    }
+
     const allMarked = await isFullyInstalled(installation);
 
     if (allMarked) {
@@ -249,6 +265,12 @@ async function restoreOrStripHtml(entry: WorkbenchEntry, messages: string[]): Pr
 export async function removeRtl(installation: CursorInstallation): Promise<{ messages: string[]; changed: boolean }> {
     const messages: string[] = [];
     let changed = false;
+
+    if (!(await isWritable(installation.workbenchDir))) {
+        messages.push(`  Skipped: ${installation.workbenchDir}`);
+        messages.push(`       Directory not writable — try running Cursor as Administrator`);
+        return { messages, changed: false };
+    }
 
     const anyMarker = (await Promise.all(installation.entries.map(e => htmlHasMarker(e.workbenchHtmlPath)))).some(Boolean);
 
