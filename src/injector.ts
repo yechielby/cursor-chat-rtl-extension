@@ -132,10 +132,9 @@ async function injectIntoWorkbenchHtml(
 ): Promise<boolean> {
     try {
         const htmlBackupPath = entry.workbenchHtmlPath + '.bak';
-        if (!(await exists(htmlBackupPath))) {
-            await fs.copyFile(entry.workbenchHtmlPath, htmlBackupPath);
-            messages.push(`  workbench.html: Backup created (${path.basename(path.dirname(entry.workbenchHtmlPath))})`);
-        }
+        const backupExisted = await exists(htmlBackupPath);
+        await fs.copyFile(entry.workbenchHtmlPath, htmlBackupPath);
+        messages.push(`  workbench.html: Backup ${backupExisted ? 'updated' : 'created'} (${path.basename(path.dirname(entry.workbenchHtmlPath))})`);
 
         let html = await fs.readFile(entry.workbenchHtmlPath, 'utf-8');
 
@@ -308,7 +307,8 @@ export async function removeRtl(installation: CursorInstallation): Promise<{ mes
 }
 
 /**
- * Re-write CSS/JS assets on disk — useful after Cursor update overwrote workbench.
+ * Re-write CSS/JS assets on disk — useful after extension upgrade.
+ * Skips write and returns changed: false if on-disk content already matches.
  */
 export async function reinjectAssets(
     installation: CursorInstallation,
@@ -319,7 +319,24 @@ export async function reinjectAssets(
     }
 
     try {
-        await writeAssets(installation, messages);
+        const cssPath = path.join(installation.workbenchDir, CSS_FILENAME);
+        const jsPath = path.join(installation.workbenchDir, JS_FILENAME);
+
+        let cssMatch = false;
+        let jsMatch = false;
+        try {
+            cssMatch = (await fs.readFile(cssPath, 'utf-8')) === RTL_CSS;
+            jsMatch = (await fs.readFile(jsPath, 'utf-8')) === RTL_JS;
+        } catch { /* file missing — will be written */ }
+
+        if (cssMatch && jsMatch) {
+            messages.push(`  CSS/JS: Already up to date`);
+            return { messages, changed: false };
+        }
+
+        await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
+        await fs.writeFile(jsPath, RTL_JS, 'utf-8');
+        messages.push(`  CSS/JS: Re-written to ${installation.workbenchDir}`);
         return { messages, changed: true };
     } catch (e: unknown) {
         messages.push(`  Reinject failed: ${(e as Error).message}`);

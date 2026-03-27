@@ -68,11 +68,19 @@ async function handleActivate(): Promise<void> {
     }
 
     channel.show(true);
-    await saveMode('active');
-    await promptRestartIfChanged(anyChanged);
 
-    if (!anyChanged) {
-        vscode.window.showInformationMessage('Cursor Chat RTL is already active.');
+    if (anyChanged) {
+        await saveMode('active');
+        await promptRestartIfChanged(true);
+    } else {
+        const statuses = await getStatus(installations);
+        const alreadyInstalled = statuses.some(s => s.isInstalled);
+        if (alreadyInstalled) {
+            await saveMode('active');
+            vscode.window.showInformationMessage('Cursor Chat RTL is already active.');
+        } else {
+            vscode.window.showWarningMessage('Cursor Chat RTL: Activation failed. Check Output for details.');
+        }
     }
 }
 
@@ -97,11 +105,19 @@ async function handleRemove(): Promise<void> {
     }
 
     channel.show(true);
-    await saveMode('inactive');
-    await promptRestartIfChanged(anyChanged);
 
-    if (!anyChanged) {
-        vscode.window.showInformationMessage('Cursor Chat RTL is already inactive.');
+    if (anyChanged) {
+        await saveMode('inactive');
+        await promptRestartIfChanged(true);
+    } else {
+        const statuses = await getStatus(installations);
+        const stillInstalled = statuses.some(s => s.isInstalled);
+        if (!stillInstalled) {
+            await saveMode('inactive');
+            vscode.window.showInformationMessage('Cursor Chat RTL is already inactive.');
+        } else {
+            vscode.window.showWarningMessage('Cursor Chat RTL: Deactivation failed. Check Output for details.');
+        }
     }
 }
 
