@@ -137,6 +137,15 @@ The toggle state is saved in `localStorage` and persists across sessions. It app
 </details>
 
 <details>
+<summary><strong>❓ After upgrading the extension, the ⇄ button is missing</strong></summary>
+
+- When the extension auto-upgrades, the previous version keeps running in memory — Cursor does not reload extensions on upgrade
+- On the next extension activation (next Cursor start, or `Developer: Reload Window`), a dialog appears: *"Changes will take effect after restarting Cursor."* — click **Quit Now**
+- If no dialog appeared (e.g. after a manual VSIX install), run `Developer: Reload Window` once, then fully quit and reopen Cursor when prompted
+
+</details>
+
+<details>
 <summary><strong>❓ RTL stopped working after a Cursor update</strong></summary>
 
 - When Cursor updates, it replaces its workbench files and removes the RTL injection
@@ -281,6 +290,15 @@ MIT — see [LICENSE](LICENSE) for details.
 - ודא שאתה **סוגר את Cursor לחלוטין** (File → Exit) ופותח מחדש
 - Developer: Reload Window לרוב **לא** טוען מחדש את ה-workbench מהדיסק
 - בדוק את פאנל הOutput ← "Cursor Chat RTL" להודעות שגיאה
+
+</details>
+
+<details>
+<summary><strong>❓ אחרי עדכון התוסף, כפתור ⇄ לא מופיע</strong></summary>
+
+- כשהתוסף מתעדכן אוטומטית, הגרסה הקודמת ממשיכה לרוץ בזיכרון — Cursor לא טוען מחדש תוספים בעקבות עדכון
+- בהפעלה הבאה של התוסף (הפעלה הבאה של Cursor, או `Developer: Reload Window`) יופיע דיאלוג: *"Changes will take effect after restarting Cursor."* — לחץ **Quit Now**
+- אם לא הופיע דיאלוג (למשל אחרי התקנת VSIX ידנית), הרץ `Developer: Reload Window` פעם אחת, ואז סגור את Cursor לחלוטין ופתח מחדש כשתתבקש
 
 </details>
 
@@ -435,6 +453,15 @@ Cursor IDE يفتقر إلى دعم RTL المدمج في المحادثة. وه
 </details>
 
 <details>
+<summary><strong>❓ بعد تحديث الإضافة، زر ⇄ لا يظهر</strong></summary>
+
+- عند التحديث التلقائي للإضافة، يستمر الإصدار السابق في العمل في الذاكرة — Cursor لا يعيد تحميل الإضافات عند التحديث
+- عند التفعيل التالي للإضافة (عند بدء Cursor التالي، أو `Developer: Reload Window`)، يظهر مربع حوار: *"Changes will take effect after restarting Cursor."* — اضغط **Quit Now**
+- إذا لم يظهر أي مربع حوار (مثلًا بعد تثبيت VSIX يدويًا)، قم بتشغيل `Developer: Reload Window` مرة واحدة، ثم أغلق Cursor بالكامل وأعد فتحه عند المطالبة
+
+</details>
+
+<details>
 <summary><strong>❓ توقف RTL عن العمل بعد تحديث Cursor</strong></summary>
 
 - عند تحديث Cursor، يتم استبدال ملفات workbench وإزالة حقن RTL
@@ -581,6 +608,15 @@ Cursor IDE فاقد پشتیبانی بومی RTL در چت است. این اغ�
 - مطمئن شوید که **Cursor را کاملاً بسته‌اید** (File → Exit) و دوباره باز کنید
 - Developer: Reload Window اغلب workbench را **از دیسک مجدداً بارگذاری نمی‌کند**
 - لوحه Output ← "Cursor Chat RTL" را برای پیام‌های خطا بررسی کنید
+
+</details>
+
+<details>
+<summary><strong>❓ پس از به‌روزرسانی افزونه، دکمه ⇄ نمایش داده نمی‌شود</strong></summary>
+
+- هنگامی که افزونه به‌طور خودکار به‌روزرسانی می‌شود، نسخه قبلی همچنان در حافظه اجرا می‌شود — Cursor افزونه‌ها را در هنگام به‌روزرسانی مجدداً بارگذاری نمی‌کند
+- در فعال‌سازی بعدی افزونه (راه‌اندازی بعدی Cursor، یا `Developer: Reload Window`)، یک پنجره ظاهر می‌شود: *"Changes will take effect after restarting Cursor."* — روی **Quit Now** کلیک کنید
+- اگر هیچ پنجره‌ای ظاهر نشد (مثلاً پس از نصب دستی VSIX)، یک بار `Developer: Reload Window` را اجرا کنید، سپس وقتی از شما خواسته شد Cursor را کاملاً ببندید و دوباره باز کنید
 
 </details>
 

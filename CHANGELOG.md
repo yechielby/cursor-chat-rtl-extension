@@ -2,6 +2,15 @@
 
 All notable changes to **Cursor Chat RTL Support** will be documented in this file.
 
+## [0.1.6] - 2026-04-19
+
+### Fixed
+- Restored the ⇄ toggle button on newer Cursor builds. Recent Cursor versions moved the chat toolbar from `.auxiliary-bar-title-hide-toolbar` into `.editor-actions`, and renamed the "New Chat" command id from `auxiliaryBar.newAgentMenu` to `composer.createNewComposerTab` — the injected JS now tries the new selectors first and falls back to the old ones, so users on both old and new Cursor versions see the button.
+
+### Improved
+- All DOM lookups for the toggle button are now scoped inside `#workbench.parts.auxiliarybar`, so the ⇄ button can never be injected next to a "+" in the Terminal, editor tabs, or other panels.
+- RTL body class is now applied from `localStorage` before attempting to insert the toggle button. If a future Cursor update breaks the toolbar selectors, RTL styling keeps working based on the last saved state — only the button itself is affected until the selectors are updated.
+
 ## [0.1.5] - 2026-03-27
 
 ### Fixed

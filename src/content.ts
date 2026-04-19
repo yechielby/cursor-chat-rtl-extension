@@ -240,23 +240,60 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
     var BODY_CLASS = '${BODY_CLASS}';
     var STORAGE_KEY = 'cursor-chat-rtl-active';
 
-    function findToolbar() {
-        var hideToolbar = document.querySelector('.auxiliary-bar-title-hide-toolbar');
-        if (!hideToolbar) return null;
+    // Anchor every lookup inside the Cursor chat/agent panel so the ⇄ button
+    // can never land next to a "+" in Terminal, editor tabs, or other panels.
+    var CHAT_PANEL_SELECTOR = '#workbench\\\\.parts\\\\.auxiliarybar';
 
-        var container = hideToolbar.querySelector('.monaco-action-bar > ul.actions-container[role="toolbar"]');
-        if (!container) return null;
+    // Toolbar containers, newest layout first, older fallback second.
+    var TOOLBAR_SELECTORS = [
+        '.editor-actions .monaco-action-bar > ul.actions-container[aria-label="Editor actions"]',
+        '.auxiliary-bar-title-hide-toolbar .monaco-action-bar > ul.actions-container[role="toolbar"]'
+    ];
 
-        return container;
+    // Chat-specific command IDs for the "New Chat/Agent" button we anchor next to.
+    // Each must be unique to Cursor chat — never reuse a generic id like a plain "add".
+    var NEW_CHAT_COMMAND_IDS = [
+        'composer.createNewComposerTab',
+        'auxiliaryBar.newAgentMenu'
+    ];
+
+    function applyBodyClassFromStorage() {
+        if (!document.body) return;
+        if (localStorage.getItem(STORAGE_KEY) === 'true') {
+            document.body.classList.add(BODY_CLASS);
+        }
+    }
+
+    function findChatPanel() {
+        return document.querySelector(CHAT_PANEL_SELECTOR);
+    }
+
+    function findToolbar(panel) {
+        for (var i = 0; i < TOOLBAR_SELECTORS.length; i++) {
+            var c = panel.querySelector(TOOLBAR_SELECTORS[i]);
+            if (c) return c;
+        }
+        return null;
+    }
+
+    function findNewChatButton(container) {
+        for (var i = 0; i < NEW_CHAT_COMMAND_IDS.length; i++) {
+            var li = container.querySelector('li.action-item[data-command-id="' + NEW_CHAT_COMMAND_IDS[i] + '"]');
+            if (li) return li;
+        }
+        return null;
     }
 
     function tryInsertButton() {
         if (document.getElementById(BTN_ID)) return;
 
-        var container = findToolbar();
+        var panel = findChatPanel();
+        if (!panel) return;
+
+        var container = findToolbar(panel);
         if (!container) return;
 
-        var firstLi = container.querySelector('li.action-item[data-command-id="auxiliaryBar.newAgentMenu"]');
+        var firstLi = findNewChatButton(container);
         if (!firstLi) return;
 
         var li = document.createElement('li');
@@ -271,11 +308,7 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
         btn.setAttribute('role', 'button');
         btn.setAttribute('tabindex', '0');
 
-        li.appendChild(btn);
-
-        var saved = localStorage.getItem(STORAGE_KEY);
-        if (saved === 'true') {
-            document.body.classList.add(BODY_CLASS);
+        if (document.body.classList.contains(BODY_CLASS)) {
             btn.classList.add('cursor-rtl-active');
         }
 
@@ -286,18 +319,23 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
             localStorage.setItem(STORAGE_KEY, isActive ? 'true' : 'false');
         });
 
+        li.appendChild(btn);
         firstLi.insertAdjacentElement('afterend', li);
     }
 
-    var observer = new MutationObserver(function() {
+    function start() {
+        applyBodyClassFromStorage();
         tryInsertButton();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+        var observer = new MutationObserver(function() {
+            tryInsertButton();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
 
     if (document.readyState !== 'loading') {
-        tryInsertButton();
+        start();
     } else {
-        document.addEventListener('DOMContentLoaded', tryInsertButton);
+        document.addEventListener('DOMContentLoaded', start);
     }
 })();
 `;
