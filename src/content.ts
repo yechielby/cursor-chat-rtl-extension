@@ -119,6 +119,20 @@ ${p}.composer-human-message-container .aislash-editor-input-readonly {
 }
 
 /**
+ * Cursor Questions panel (`.composer-questionnaire-toolbar`).
+ * @param p - selector prefix including trailing space
+ */
+function rtlQuestionnaire(p: string): string {
+    return `
+/* --- TEXT: RTL (Questions panel) --- */
+
+${p}.composer-questionnaire-toolbar {
+    direction: rtl !important;
+}
+`;
+}
+
+/**
  * @param p - selector prefix including trailing space
  */
 function ltrOverrides(p: string): string {
@@ -222,6 +236,70 @@ ${p}.composer-message-codeblock {
 `;
 }
 
+/**
+ * Per-element opt-in RTL overrides — NOT gated by body.cursor-chat-rtl.
+ * These rules fire whenever a specific element has the activation class,
+ * independent of the chat-wide RTL toggle.
+ *
+ * - `.monaco-editor.cursor-md-rtl[data-mode-id="markdown"] .view-lines` —
+ *   per-file Markdown editor RTL (Change 2). Activated by the ⇄ button injected
+ *   into the editor's actions toolbar for each open .md file.
+ * - `.composer-message-codeblock.cursor-code-rtl .ui-code-block` —
+ *   per-code-block RTL in chat (Change 3). Activated by the ⇄ button injected
+ *   next to each code block's Copy button. Specificity (0,3,1) wins over the
+ *   existing LTR-forcing rule on `.composer-message-codeblock` (0,2,1).
+ */
+const OPT_IN_RTL_OVERRIDES = `
+/* --- Per-file Markdown editor RTL (opt-in via cursor-md-rtl class) --- */
+
+.monaco-editor.cursor-md-rtl[data-mode-id="markdown"] .view-lines {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* --- Per-code-block RTL (opt-in via cursor-code-rtl class) --- */
+
+.composer-message-codeblock.cursor-code-rtl .ui-code-block,
+.composer-message-codeblock.cursor-code-rtl .ui-code-block .ui-default-code__line-content {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* --- New toggle buttons (shared visual style with the chat ⇄ button) --- */
+
+.cursor-md-rtl-btn {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--vscode-foreground);
+    opacity: 0.5;
+    transition: opacity 0.2s, background 0.2s;
+    flex-shrink: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+}
+
+.cursor-md-rtl-btn:hover {
+    opacity: 1;
+}
+
+.cursor-md-rtl-btn.cursor-rtl-active {
+    opacity: 1;
+    background: var(--vscode-button-background, rgba(128, 128, 128, 0.3));
+}
+
+.cursor-code-rtl-btn.cursor-rtl-active {
+    background: var(--vscode-button-background, rgba(128, 128, 128, 0.3)) !important;
+}
+`;
+
 /** The CSS injected for active mode (toggle ⇄ + body class) */
 export const RTL_CSS = `/* === CURSOR-CHAT-RTL-START === */
 ${RTL_MODE_ACTIVE_MARKER}
@@ -229,7 +307,9 @@ ${BUTTON_CSS}
 
 ${rtlLegacyMarkdown(`body.${BODY_CLASS} `)}
 ${rtlComposerMarkdown(`body.${BODY_CLASS} `)}
+${rtlQuestionnaire(`body.${BODY_CLASS} `)}
 ${ltrOverrides(`body.${BODY_CLASS} `)}
+${OPT_IN_RTL_OVERRIDES}
 /* === CURSOR-CHAT-RTL-END === */
 `;
 
@@ -323,11 +403,141 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
         firstLi.insertAdjacentElement('afterend', li);
     }
 
+    // -----------------------------------------------------------------
+    // MD editor RTL toggle button (Change 2)
+    // -----------------------------------------------------------------
+    // For each editor group that has a markdown editor visible, inject a toggle
+    // button into the group's "Editor actions" toolbar. The button toggles the
+    // cursor-md-rtl class on the active markdown monaco-editor and persists
+    // state per-file URI in localStorage. The button is removed when the active
+    // editor in the group is no longer markdown.
+
+    var MD_RTL_STORAGE_PREFIX = 'cursor-md-rtl:';
+    var MD_RTL_BTN_CLASS = 'cursor-md-rtl-btn';
+    var MD_RTL_LI_CLASS = 'cursor-md-rtl-li';
+    var MD_RTL_ACTIVE_CLASS = 'cursor-md-rtl';
+
+    // Scope to the main editor area to never inject into chat / auxiliary panels.
+    var EDITOR_ACTION_TOOLBAR_SELECTOR = '.part.editor .editor-actions .monaco-action-bar > ul.actions-container';
+    var MARKDOWN_MONACO_SELECTOR = '.monaco-editor[data-mode-id="markdown"]';
+
+    function findEditorGroup(toolbar) {
+        return toolbar.closest('.editor-group-container') || toolbar.closest('.part.editor');
+    }
+
+    function tryInsertMdEditorButtons() {
+        var toolbars = document.querySelectorAll(EDITOR_ACTION_TOOLBAR_SELECTOR);
+        for (var i = 0; i < toolbars.length; i++) {
+            var toolbar = toolbars[i];
+            var group = findEditorGroup(toolbar);
+            if (!group) continue;
+
+            var monaco = group.querySelector(MARKDOWN_MONACO_SELECTOR);
+            var existingLi = toolbar.querySelector('li.' + MD_RTL_LI_CLASS);
+
+            if (!monaco) {
+                if (existingLi) existingLi.remove();
+                continue;
+            }
+
+            // Restore persisted state for this file.
+            var uri = monaco.getAttribute('data-uri') || '';
+            if (uri && localStorage.getItem(MD_RTL_STORAGE_PREFIX + uri) === 'true') {
+                monaco.classList.add(MD_RTL_ACTIVE_CLASS);
+            }
+
+            if (existingLi) {
+                var existingBtn = existingLi.querySelector('.' + MD_RTL_BTN_CLASS);
+                if (existingBtn) {
+                    existingBtn.classList.toggle('cursor-rtl-active', monaco.classList.contains(MD_RTL_ACTIVE_CLASS));
+                }
+                continue;
+            }
+
+            var li = document.createElement('li');
+            li.className = 'action-item ' + MD_RTL_LI_CLASS;
+            li.setAttribute('role', 'presentation');
+
+            var btn = document.createElement('a');
+            btn.className = 'action-label ' + MD_RTL_BTN_CLASS;
+            btn.textContent = '\\u21C4';
+            btn.title = 'Toggle RTL for this Markdown file';
+            btn.setAttribute('role', 'button');
+            btn.setAttribute('tabindex', '0');
+
+            if (monaco.classList.contains(MD_RTL_ACTIVE_CLASS)) {
+                btn.classList.add('cursor-rtl-active');
+            }
+
+            (function bindClick(boundGroup, boundBtn) {
+                boundBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var currentMonaco = boundGroup.querySelector(MARKDOWN_MONACO_SELECTOR);
+                    if (!currentMonaco) return;
+                    var currentUri = currentMonaco.getAttribute('data-uri') || '';
+                    var nowActive = currentMonaco.classList.toggle(MD_RTL_ACTIVE_CLASS);
+                    boundBtn.classList.toggle('cursor-rtl-active', nowActive);
+                    if (currentUri) {
+                        localStorage.setItem(MD_RTL_STORAGE_PREFIX + currentUri, nowActive ? 'true' : 'false');
+                    }
+                });
+            })(group, btn);
+
+            li.appendChild(btn);
+            toolbar.appendChild(li);
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Per-code-block RTL toggle button (Change 3)
+    // -----------------------------------------------------------------
+    // For each chat code block, inject a toggle button next to the existing
+    // Copy button. Click toggles cursor-code-rtl on the closest
+    // composer-message-codeblock. Ephemeral — no persistence — because code
+    // blocks lack stable identifiers across sessions.
+
+    var CODE_RTL_BTN_CLASS = 'cursor-code-rtl-btn';
+    var CODE_RTL_ACTIVE_CLASS = 'cursor-code-rtl';
+
+    function tryInsertCodeBlockButtons() {
+        var overlays = document.querySelectorAll('.ui-code-block-copy-overlay');
+        for (var i = 0; i < overlays.length; i++) {
+            var overlay = overlays[i];
+            if (overlay.querySelector('.' + CODE_RTL_BTN_CLASS)) continue;
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ui-icon-button ' + CODE_RTL_BTN_CLASS;
+            btn.setAttribute('data-variant', 'default');
+            btn.setAttribute('data-frame', 'container');
+            btn.setAttribute('data-size', 'xs');
+            btn.setAttribute('aria-label', 'Toggle RTL for this code block');
+            btn.title = 'Toggle RTL for this code block';
+            btn.textContent = '\\u21C4';
+
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var clicked = e.currentTarget;
+                var codeblock = clicked.closest('.composer-message-codeblock');
+                if (!codeblock) return;
+                var nowActive = codeblock.classList.toggle(CODE_RTL_ACTIVE_CLASS);
+                clicked.classList.toggle('cursor-rtl-active', nowActive);
+            });
+
+            overlay.appendChild(btn);
+        }
+    }
+
     function start() {
         applyBodyClassFromStorage();
         tryInsertButton();
+        tryInsertMdEditorButtons();
+        tryInsertCodeBlockButtons();
         var observer = new MutationObserver(function() {
             tryInsertButton();
+            tryInsertMdEditorButtons();
+            tryInsertCodeBlockButtons();
         });
         observer.observe(document.body, { childList: true, subtree: true });
     }

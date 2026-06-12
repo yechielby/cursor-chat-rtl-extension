@@ -2,6 +2,17 @@
 
 All notable changes to **Cursor Chat RTL Support** will be documented in this file.
 
+## [0.1.7] - 2026-06-12
+
+### Added
+- **Questions panel** — Cursor's multiple-choice question prompts (`.composer-questionnaire-toolbar`) now follow RTL when the chat ⇄ toggle is active. The full card — question text, A/B/C/D options, and Skip / Continue actions — is right-aligned.
+- **Per-file Markdown editor RTL toggle** — Every `.md` file opened in the editor now shows a ⇄ button in its top-right action toolbar. Click to flip that file's text to RTL. State is persisted per-file URI in `localStorage`, so reopening the file restores its RTL state. Works independently of the chat ⇄ toggle.
+- **Per-code-block RTL toggle** — Every chat code block now shows a small ⇄ button next to its existing Copy button. Click flips only that single code block to RTL; other code blocks remain LTR. Ephemeral by design — state resets when Cursor reopens, since code blocks lack stable identifiers.
+
+### Notes
+- Code blocks, JSON, and terminal output still default to LTR everywhere — the new per-block toggle is opt-in only.
+- The two new buttons work even when the chat ⇄ toggle is off; they target specific elements via dedicated activation classes (`cursor-md-rtl`, `cursor-code-rtl`) that are independent of the chat-wide `body.cursor-chat-rtl` class.
+
 ## [0.1.6] - 2026-04-19
 
 ### Fixed
