@@ -241,18 +241,22 @@ ${p}.composer-message-codeblock {
  * These rules fire whenever a specific element has the activation class,
  * independent of the chat-wide RTL toggle.
  *
- * - `.monaco-editor.cursor-md-rtl[data-mode-id="markdown"] .view-lines` —
- *   per-file Markdown editor RTL (Change 2). Activated by the ⇄ button injected
- *   into the editor's actions toolbar for each open .md file.
+ * - `.editor-container.cursor-md-rtl` (markdown editor) — flips text direction
+ *   for both the Markdown source view (`.view-lines`) and Cursor's inline
+ *   Preview view (`.markdown-editor-react`). One toggle covers both modes.
+ *   Activated by the ⇄ button injected into the Markdown breadcrumb tabs
+ *   (next to Preview/Markdown).
  * - `.composer-message-codeblock.cursor-code-rtl .ui-code-block` —
- *   per-code-block RTL in chat (Change 3). Activated by the ⇄ button injected
- *   next to each code block's Copy button. Specificity (0,3,1) wins over the
- *   existing LTR-forcing rule on `.composer-message-codeblock` (0,2,1).
+ *   per-code-block RTL in chat. Specificity (0,3,1) wins over the existing
+ *   LTR-forcing rule on `.composer-message-codeblock` (0,2,1).
  */
 const OPT_IN_RTL_OVERRIDES = `
 /* --- Per-file Markdown editor RTL (opt-in via cursor-md-rtl class) --- */
+/*    Covers both Cursor's inline Preview (.markdown-editor-react) and the    */
+/*    raw Monaco source view (.view-lines).                                   */
 
-.monaco-editor.cursor-md-rtl[data-mode-id="markdown"] .view-lines {
+.editor-container.cursor-md-rtl .markdown-editor-react,
+.editor-container.cursor-md-rtl .view-lines {
     direction: rtl !important;
     text-align: right !important;
 }
@@ -265,38 +269,15 @@ const OPT_IN_RTL_OVERRIDES = `
     text-align: right !important;
 }
 
-/* --- New toggle buttons (shared visual style with the chat ⇄ button) --- */
+/* --- Toggle-button active state (shared by md and code-block toggles) --- */
+/*    The MD button uses Cursor's .markdown-mode-tab class for base styling   */
+/*    and only needs an "active" visual; the code-block button reuses         */
+/*    Cursor's .ui-icon-button base.                                          */
 
-.cursor-md-rtl-btn {
-    font-size: 14px !important;
-    font-weight: bold !important;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background: transparent;
-    color: var(--vscode-foreground);
-    opacity: 0.5;
-    transition: opacity 0.2s, background 0.2s;
-    flex-shrink: 0;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none !important;
-}
-
-.cursor-md-rtl-btn:hover {
-    opacity: 1;
-}
-
-.cursor-md-rtl-btn.cursor-rtl-active {
-    opacity: 1;
-    background: var(--vscode-button-background, rgba(128, 128, 128, 0.3));
-}
-
+.cursor-md-rtl-btn.cursor-rtl-active,
 .cursor-code-rtl-btn.cursor-rtl-active {
     background: var(--vscode-button-background, rgba(128, 128, 128, 0.3)) !important;
+    opacity: 1 !important;
 }
 `;
 
@@ -406,85 +387,90 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
     // -----------------------------------------------------------------
     // MD editor RTL toggle button (Change 2)
     // -----------------------------------------------------------------
-    // For each editor group that has a markdown editor visible, inject a toggle
-    // button into the group's "Editor actions" toolbar. The button toggles the
-    // cursor-md-rtl class on the active markdown monaco-editor and persists
-    // state per-file URI in localStorage. The button is removed when the active
-    // editor in the group is no longer markdown.
+    // For every Markdown breadcrumb-controls strip (the [Preview][Markdown]
+    // switcher in the editor title bar), inject a third toggle button next
+    // to them. Click toggles cursor-md-rtl on the enclosing .editor-container,
+    // and the CSS rule flips both the Monaco source view (.view-lines) and
+    // the inline Preview (.markdown-editor-react). State is persisted per
+    // file in localStorage, identified by the file path from the file
+    // breadcrumb item's aria-label.
 
     var MD_RTL_STORAGE_PREFIX = 'cursor-md-rtl:';
     var MD_RTL_BTN_CLASS = 'cursor-md-rtl-btn';
-    var MD_RTL_LI_CLASS = 'cursor-md-rtl-li';
     var MD_RTL_ACTIVE_CLASS = 'cursor-md-rtl';
 
-    // Scope to the main editor area to never inject into chat / auxiliary panels.
-    var EDITOR_ACTION_TOOLBAR_SELECTOR = '.part.editor .editor-actions .monaco-action-bar > ul.actions-container';
-    var MARKDOWN_MONACO_SELECTOR = '.monaco-editor[data-mode-id="markdown"]';
+    var MD_BREADCRUMB_CONTROLS_SELECTOR =
+        '.title .breadcrumbs-row [data-markdown-breadcrumb-controls="true"]';
 
-    function findEditorGroup(toolbar) {
-        return toolbar.closest('.editor-group-container') || toolbar.closest('.part.editor');
+    function getMdFileId(controlsEl) {
+        // First try the file breadcrumb item's aria-label (e.g. an absolute
+        // file path). This exists in both Markdown and Preview modes and is
+        // stable per file.
+        var titleEl = controlsEl.closest('.title');
+        if (titleEl) {
+            var fileLabel = titleEl.querySelector(
+                '.breadcrumbs-row .file.monaco-breadcrumb-item .monaco-icon-label'
+            );
+            if (fileLabel) {
+                var aria = fileLabel.getAttribute('aria-label');
+                if (aria) return aria;
+            }
+        }
+        // Fallback: try the Monaco data-uri (only present in source mode).
+        var container = controlsEl.closest('.editor-container');
+        if (container) {
+            var monaco = container.querySelector('.monaco-editor[data-uri]');
+            if (monaco) {
+                var uri = monaco.getAttribute('data-uri');
+                if (uri) return uri;
+            }
+        }
+        return '';
     }
 
     function tryInsertMdEditorButtons() {
-        var toolbars = document.querySelectorAll(EDITOR_ACTION_TOOLBAR_SELECTOR);
-        for (var i = 0; i < toolbars.length; i++) {
-            var toolbar = toolbars[i];
-            var group = findEditorGroup(toolbar);
-            if (!group) continue;
+        var controlsList = document.querySelectorAll(MD_BREADCRUMB_CONTROLS_SELECTOR);
+        for (var i = 0; i < controlsList.length; i++) {
+            var controls = controlsList[i];
+            var tabsContainer = controls.querySelector('.markdown-mode-tabs');
+            if (!tabsContainer) continue;
+            if (tabsContainer.querySelector('.' + MD_RTL_BTN_CLASS)) continue;
 
-            var monaco = group.querySelector(MARKDOWN_MONACO_SELECTOR);
-            var existingLi = toolbar.querySelector('li.' + MD_RTL_LI_CLASS);
+            var editorContainer = controls.closest('.editor-container');
+            if (!editorContainer) continue;
 
-            if (!monaco) {
-                if (existingLi) existingLi.remove();
-                continue;
+            var fileId = getMdFileId(controls);
+
+            // Restore persisted state for this file onto the editor-container.
+            if (fileId && localStorage.getItem(MD_RTL_STORAGE_PREFIX + fileId) === 'true') {
+                editorContainer.classList.add(MD_RTL_ACTIVE_CLASS);
             }
 
-            // Restore persisted state for this file.
-            var uri = monaco.getAttribute('data-uri') || '';
-            if (uri && localStorage.getItem(MD_RTL_STORAGE_PREFIX + uri) === 'true') {
-                monaco.classList.add(MD_RTL_ACTIVE_CLASS);
-            }
-
-            if (existingLi) {
-                var existingBtn = existingLi.querySelector('.' + MD_RTL_BTN_CLASS);
-                if (existingBtn) {
-                    existingBtn.classList.toggle('cursor-rtl-active', monaco.classList.contains(MD_RTL_ACTIVE_CLASS));
-                }
-                continue;
-            }
-
-            var li = document.createElement('li');
-            li.className = 'action-item ' + MD_RTL_LI_CLASS;
-            li.setAttribute('role', 'presentation');
-
-            var btn = document.createElement('a');
-            btn.className = 'action-label ' + MD_RTL_BTN_CLASS;
-            btn.textContent = '\\u21C4';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'markdown-mode-tab ' + MD_RTL_BTN_CLASS;
             btn.title = 'Toggle RTL for this Markdown file';
-            btn.setAttribute('role', 'button');
-            btn.setAttribute('tabindex', '0');
+            btn.textContent = '\\u21C4';
 
-            if (monaco.classList.contains(MD_RTL_ACTIVE_CLASS)) {
+            if (editorContainer.classList.contains(MD_RTL_ACTIVE_CLASS)) {
                 btn.classList.add('cursor-rtl-active');
             }
 
-            (function bindClick(boundGroup, boundBtn) {
+            (function bindClick(boundContainer, boundFileId, boundBtn) {
                 boundBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    var currentMonaco = boundGroup.querySelector(MARKDOWN_MONACO_SELECTOR);
-                    if (!currentMonaco) return;
-                    var currentUri = currentMonaco.getAttribute('data-uri') || '';
-                    var nowActive = currentMonaco.classList.toggle(MD_RTL_ACTIVE_CLASS);
+                    var nowActive = boundContainer.classList.toggle(MD_RTL_ACTIVE_CLASS);
                     boundBtn.classList.toggle('cursor-rtl-active', nowActive);
-                    if (currentUri) {
-                        localStorage.setItem(MD_RTL_STORAGE_PREFIX + currentUri, nowActive ? 'true' : 'false');
+                    if (boundFileId) {
+                        localStorage.setItem(
+                            MD_RTL_STORAGE_PREFIX + boundFileId,
+                            nowActive ? 'true' : 'false'
+                        );
                     }
                 });
-            })(group, btn);
+            })(editorContainer, fileId, btn);
 
-            li.appendChild(btn);
-            toolbar.appendChild(li);
+            tabsContainer.appendChild(btn);
         }
     }
 
