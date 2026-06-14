@@ -436,7 +436,14 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
             if (!tabsContainer) continue;
             if (tabsContainer.querySelector('.' + MD_RTL_BTN_CLASS)) continue;
 
-            var editorContainer = controls.closest('.editor-container');
+            // The breadcrumb lives in the editor group's title strip; the
+            // actual editor content (Monaco source view or inline Preview) is
+            // in a sibling subtree under the same .editor-group-container.
+            // Walk up to the group, then down to .editor-container.
+            var editorGroup = controls.closest('.editor-group-container');
+            if (!editorGroup) continue;
+
+            var editorContainer = editorGroup.querySelector('.editor-container');
             if (!editorContainer) continue;
 
             var fileId = getMdFileId(controls);
@@ -456,10 +463,14 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
                 btn.classList.add('cursor-rtl-active');
             }
 
-            (function bindClick(boundContainer, boundFileId, boundBtn) {
+            (function bindClick(boundGroup, boundFileId, boundBtn) {
                 boundBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    var nowActive = boundContainer.classList.toggle(MD_RTL_ACTIVE_CLASS);
+                    // Re-resolve at click time — the .editor-container DOM
+                    // may have been replaced if the user switched tabs.
+                    var currentContainer = boundGroup.querySelector('.editor-container');
+                    if (!currentContainer) return;
+                    var nowActive = currentContainer.classList.toggle(MD_RTL_ACTIVE_CLASS);
                     boundBtn.classList.toggle('cursor-rtl-active', nowActive);
                     if (boundFileId) {
                         localStorage.setItem(
@@ -468,7 +479,7 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
                         );
                     }
                 });
-            })(editorContainer, fileId, btn);
+            })(editorGroup, fileId, btn);
 
             tabsContainer.appendChild(btn);
         }
