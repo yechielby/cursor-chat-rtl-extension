@@ -238,29 +238,12 @@ ${p}.composer-message-codeblock {
 
 /**
  * Per-element opt-in RTL overrides — NOT gated by body.cursor-chat-rtl.
- * These rules fire whenever a specific element has the activation class,
- * independent of the chat-wide RTL toggle.
  *
- * - `.editor-container.cursor-md-rtl` (markdown editor) — flips text direction
- *   for both the Markdown source view (`.view-lines`) and Cursor's inline
- *   Preview view (`.markdown-editor-react`). One toggle covers both modes.
- *   Activated by the ⇄ button injected into the Markdown breadcrumb tabs
- *   (next to Preview/Markdown).
  * - `.composer-message-codeblock.cursor-code-rtl .ui-code-block` —
  *   per-code-block RTL in chat. Specificity (0,3,1) wins over the existing
  *   LTR-forcing rule on `.composer-message-codeblock` (0,2,1).
  */
 const OPT_IN_RTL_OVERRIDES = `
-/* --- Per-file Markdown editor RTL (opt-in via cursor-md-rtl class) --- */
-/*    Covers both Cursor's inline Preview (.markdown-editor-react) and the    */
-/*    raw Monaco source view (.view-lines).                                   */
-
-.editor-container.cursor-md-rtl .markdown-editor-react,
-.editor-container.cursor-md-rtl .view-lines {
-    direction: rtl !important;
-    text-align: right !important;
-}
-
 /* --- Per-code-block RTL (opt-in via cursor-code-rtl class) --- */
 
 .composer-message-codeblock.cursor-code-rtl .ui-code-block,
@@ -269,12 +252,8 @@ const OPT_IN_RTL_OVERRIDES = `
     text-align: right !important;
 }
 
-/* --- Toggle-button active state (shared by md and code-block toggles) --- */
-/*    The MD button uses Cursor's .markdown-mode-tab class for base styling   */
-/*    and only needs an "active" visual; the code-block button reuses         */
-/*    Cursor's .ui-icon-button base.                                          */
+/* --- Code-block toggle active state --- */
 
-.cursor-md-rtl-btn.cursor-rtl-active,
 .cursor-code-rtl-btn.cursor-rtl-active {
     background: var(--vscode-button-background, rgba(128, 128, 128, 0.3)) !important;
     opacity: 1 !important;
@@ -385,107 +364,6 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
     }
 
     // -----------------------------------------------------------------
-    // MD editor RTL toggle button (Change 2)
-    // -----------------------------------------------------------------
-    // For every Markdown breadcrumb-controls strip (the [Preview][Markdown]
-    // switcher in the editor title bar), inject a third toggle button next
-    // to them. Click toggles cursor-md-rtl on the enclosing .editor-container,
-    // and the CSS rule flips both the Monaco source view (.view-lines) and
-    // the inline Preview (.markdown-editor-react). State is persisted per
-    // file in localStorage, identified by the file path from the file
-    // breadcrumb item's aria-label.
-
-    var MD_RTL_STORAGE_PREFIX = 'cursor-md-rtl:';
-    var MD_RTL_BTN_CLASS = 'cursor-md-rtl-btn';
-    var MD_RTL_ACTIVE_CLASS = 'cursor-md-rtl';
-
-    var MD_BREADCRUMB_CONTROLS_SELECTOR =
-        '.title .breadcrumbs-row [data-markdown-breadcrumb-controls="true"]';
-
-    function getMdFileId(controlsEl) {
-        // First try the file breadcrumb item's aria-label (e.g. an absolute
-        // file path). This exists in both Markdown and Preview modes and is
-        // stable per file.
-        var titleEl = controlsEl.closest('.title');
-        if (titleEl) {
-            var fileLabel = titleEl.querySelector(
-                '.breadcrumbs-row .file.monaco-breadcrumb-item .monaco-icon-label'
-            );
-            if (fileLabel) {
-                var aria = fileLabel.getAttribute('aria-label');
-                if (aria) return aria;
-            }
-        }
-        // Fallback: try the Monaco data-uri (only present in source mode).
-        var container = controlsEl.closest('.editor-container');
-        if (container) {
-            var monaco = container.querySelector('.monaco-editor[data-uri]');
-            if (monaco) {
-                var uri = monaco.getAttribute('data-uri');
-                if (uri) return uri;
-            }
-        }
-        return '';
-    }
-
-    function tryInsertMdEditorButtons() {
-        var controlsList = document.querySelectorAll(MD_BREADCRUMB_CONTROLS_SELECTOR);
-        for (var i = 0; i < controlsList.length; i++) {
-            var controls = controlsList[i];
-            var tabsContainer = controls.querySelector('.markdown-mode-tabs');
-            if (!tabsContainer) continue;
-            if (tabsContainer.querySelector('.' + MD_RTL_BTN_CLASS)) continue;
-
-            // The breadcrumb lives in the editor group's title strip; the
-            // actual editor content (Monaco source view or inline Preview) is
-            // in a sibling subtree under the same .editor-group-container.
-            // Walk up to the group, then down to .editor-container.
-            var editorGroup = controls.closest('.editor-group-container');
-            if (!editorGroup) continue;
-
-            var editorContainer = editorGroup.querySelector('.editor-container');
-            if (!editorContainer) continue;
-
-            var fileId = getMdFileId(controls);
-
-            // Restore persisted state for this file onto the editor-container.
-            if (fileId && localStorage.getItem(MD_RTL_STORAGE_PREFIX + fileId) === 'true') {
-                editorContainer.classList.add(MD_RTL_ACTIVE_CLASS);
-            }
-
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'markdown-mode-tab ' + MD_RTL_BTN_CLASS;
-            btn.title = 'Toggle RTL for this Markdown file';
-            btn.textContent = '\\u21C4';
-
-            if (editorContainer.classList.contains(MD_RTL_ACTIVE_CLASS)) {
-                btn.classList.add('cursor-rtl-active');
-            }
-
-            (function bindClick(boundGroup, boundFileId, boundBtn) {
-                boundBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    // Re-resolve at click time — the .editor-container DOM
-                    // may have been replaced if the user switched tabs.
-                    var currentContainer = boundGroup.querySelector('.editor-container');
-                    if (!currentContainer) return;
-                    var nowActive = currentContainer.classList.toggle(MD_RTL_ACTIVE_CLASS);
-                    boundBtn.classList.toggle('cursor-rtl-active', nowActive);
-                    if (boundFileId) {
-                        localStorage.setItem(
-                            MD_RTL_STORAGE_PREFIX + boundFileId,
-                            nowActive ? 'true' : 'false'
-                        );
-                    }
-                });
-            })(editorGroup, fileId, btn);
-
-            tabsContainer.appendChild(btn);
-        }
-    }
-
-    // -----------------------------------------------------------------
     // Per-code-block RTL toggle button (Change 3)
     // -----------------------------------------------------------------
     // For each chat code block, inject a toggle button next to the existing
@@ -529,11 +407,9 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
     function start() {
         applyBodyClassFromStorage();
         tryInsertButton();
-        tryInsertMdEditorButtons();
         tryInsertCodeBlockButtons();
         var observer = new MutationObserver(function() {
             tryInsertButton();
-            tryInsertMdEditorButtons();
             tryInsertCodeBlockButtons();
         });
         observer.observe(document.body, { childList: true, subtree: true });
