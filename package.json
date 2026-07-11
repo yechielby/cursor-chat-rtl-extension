@@ -57,6 +57,10 @@
       {
         "command": "cursor-rtl.status",
         "title": "Cursor Chat RTL: Check Status"
+      },
+      {
+        "command": "cursor-rtl.diagnose",
+        "title": "Cursor Chat RTL: Diagnose Selectors"
       }
     ]
   },

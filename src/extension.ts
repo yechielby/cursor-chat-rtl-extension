@@ -3,8 +3,11 @@
  * Does not patch VS Code. Finder only discovers Cursor paths.
  */
 import * as vscode from 'vscode';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { findCursorInstallations } from './finder.js';
 import { addRtl, removeRtl, getStatus, reinjectAssets, isFullyInstalled } from './injector.js';
+import { auditAnchors, KNOWN_ANCHORS } from './diagnose.js';
 import type { RtlMode } from './types.js';
 import { createStatusBarItem, updateStatusBar, disposeStatusBar } from './statusBar.js';
 
@@ -152,6 +155,41 @@ async function handleStatus(): Promise<void> {
     await updateStatusBar();
 }
 
+/**
+ * Report which DOM anchors the injected CSS/JS relies on still exist in the
+ * installed Cursor bundle. When a Cursor update breaks RTL, a MISSING "current"
+ * anchor pinpoints the stale selector in seconds.
+ */
+async function handleDiagnose(): Promise<void> {
+    const channel = getOutputChannel();
+    channel.clear();
+    const bundlePath = path.join(
+        vscode.env.appRoot, 'out', 'vs', 'workbench', 'workbench.desktop.main.js',
+    );
+    channel.appendLine('Cursor Chat RTL — selector diagnosis');
+    channel.appendLine(`IDE: ${vscode.env.appName}`);
+    channel.appendLine(`Bundle: ${bundlePath}`);
+    channel.appendLine('');
+
+    let bundle: string;
+    try {
+        bundle = await fs.readFile(bundlePath, 'utf-8');
+    } catch (e) {
+        channel.appendLine(`ERROR: cannot read bundle — ${(e as Error).message}`);
+        channel.show(true);
+        return;
+    }
+
+    channel.appendLine('(legacy anchors are fallback-only — 0 hits on a modern Cursor is fine)');
+    channel.appendLine('');
+    for (const r of auditAnchors(bundle, KNOWN_ANCHORS)) {
+        const mark = r.present ? '✓' : '✗';
+        const note = r.present ? `${r.hits} hits` : 'MISSING — selector may be stale';
+        channel.appendLine(`${mark} ${r.anchor.padEnd(34)} ${note}`);
+    }
+    channel.show(true);
+}
+
 async function saveVersion(): Promise<void> {
     await globalState.update(STATE_VERSION_KEY, currentVersion);
 }
@@ -280,6 +318,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('cursor-rtl.remove', handleRemove),
         vscode.commands.registerCommand('cursor-rtl.status', handleStatus),
         vscode.commands.registerCommand('cursor-rtl.toggle', handleToggle),
+        vscode.commands.registerCommand('cursor-rtl.diagnose', handleDiagnose),
     );
 
     autoReactivate().catch(err => console.error('Cursor RTL auto-reactivate failed:', err));
