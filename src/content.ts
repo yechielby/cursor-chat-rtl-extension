@@ -119,6 +119,44 @@ ${p}.composer-human-message-container .aislash-editor-input-readonly {
 }
 
 /**
+ * Modern Cursor AI response markdown. AI content moved OUT of
+ * `.composer-rendered-message` into `[data-message-role="ai"]` → `.markdown-root`,
+ * which is why RTL stopped applying to AI responses after a Cursor update.
+ *
+ * Behavior is auto-by-content: each block picks direction from its own text
+ * (`unicode-bidi: plaintext`, like `dir="auto"`) and aligns accordingly
+ * (`text-align: start`). So a Hebrew block aligns right, a purely-English block
+ * stays LTR. Double-guarded: real tag names (never rename) + `ui-markdown__*`
+ * design-system classes.
+ * @param p - selector prefix including trailing space (e.g. "body.cursor-chat-rtl ")
+ */
+function rtlAiMarkdown(p: string): string {
+    return `
+/* --- TEXT: RTL (modern Cursor AI markdown) --- */
+
+${p}:is([data-message-role="ai"], .markdown-root) {
+    direction: rtl;
+}
+
+${p}:is([data-message-role="ai"], .markdown-root) :is(
+    p, li, h1, h2, h3, h4, h5, h6, blockquote, ul, ol,
+    .ui-markdown__paragraph, .ui-markdown__list, .ui-markdown__list-item,
+    .ui-markdown__heading, .ui-markdown__blockquote
+) {
+    text-align: start !important;
+    unicode-bidi: plaintext !important;
+}
+
+${p}:is([data-message-role="ai"], .markdown-root) :is(
+    th, td, .ui-markdown__th, .ui-markdown__td
+) {
+    text-align: start !important;
+    unicode-bidi: plaintext !important;
+}
+`;
+}
+
+/**
  * Cursor Questions panel (`.composer-questionnaire-toolbar`).
  * @param p - selector prefix including trailing space
  */
@@ -138,6 +176,19 @@ ${p}.composer-questionnaire-toolbar {
 function ltrOverrides(p: string): string {
     return `
 /* --- MUST STAY LTR --- */
+
+/* Modern Cursor code blocks + inline code. isolate keeps a Hebrew string
+   inside code from flipping the whole line. */
+${p}:is(
+    .ui-code-block,
+    .ui-default-code,
+    .ui-default-code__line-content,
+    .ui-markdown__inline-code
+) {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+}
 
 ${p}.interactive-result-code-block {
     direction: ltr !important;
@@ -245,11 +296,16 @@ ${p}.composer-message-codeblock {
  */
 const OPT_IN_RTL_OVERRIDES = `
 /* --- Per-code-block RTL (opt-in via cursor-code-rtl class) --- */
+/* Modern anchor (.ui-code-block) first, legacy (.composer-message-codeblock)
+   as fallback. Concatenated LAST in RTL_CSS so it wins the global code-LTR
+   rule on equal specificity (source order breaks the !important tie). */
 
+.ui-code-block.cursor-code-rtl :is(.ui-default-code, .ui-default-code__line-content),
 .composer-message-codeblock.cursor-code-rtl .ui-code-block,
 .composer-message-codeblock.cursor-code-rtl .ui-code-block .ui-default-code__line-content {
     direction: rtl !important;
     text-align: right !important;
+    unicode-bidi: plaintext !important;
 }
 
 /* --- Code-block toggle active state --- */
@@ -267,6 +323,7 @@ ${BUTTON_CSS}
 
 ${rtlLegacyMarkdown(`body.${BODY_CLASS} `)}
 ${rtlComposerMarkdown(`body.${BODY_CLASS} `)}
+${rtlAiMarkdown(`body.${BODY_CLASS} `)}
 ${rtlQuestionnaire(`body.${BODY_CLASS} `)}
 ${ltrOverrides(`body.${BODY_CLASS} `)}
 ${OPT_IN_RTL_OVERRIDES}
@@ -394,7 +451,9 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
                 e.preventDefault();
                 e.stopPropagation();
                 var clicked = e.currentTarget;
-                var codeblock = clicked.closest('.composer-message-codeblock');
+                // Modern Cursor wraps code in .ui-code-block; older builds used
+                // .composer-message-codeblock. Try new first, fall back to old.
+                var codeblock = clicked.closest('.ui-code-block') || clicked.closest('.composer-message-codeblock');
                 if (!codeblock) return;
                 var nowActive = codeblock.classList.toggle(CODE_RTL_ACTIVE_CLASS);
                 clicked.classList.toggle('cursor-rtl-active', nowActive);
