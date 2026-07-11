@@ -164,8 +164,31 @@ function rtlQuestionnaire(p: string): string {
     return `
 /* --- TEXT: RTL (Questions panel) --- */
 
+/* Whole card mirrors RTL: header, options, actions/stepper all flow right. */
 ${p}.composer-questionnaire-toolbar {
     direction: rtl !important;
+}
+
+/* Text-bearing parts align by content (Hebrew→right, English→left). */
+${p}:is(
+    .composer-questionnaire-toolbar-title,
+    .composer-questionnaire-toolbar-question,
+    .composer-questionnaire-toolbar-question-label,
+    .composer-questionnaire-toolbar-option,
+    .composer-questionnaire-toolbar-option-label,
+    .composer-questionnaire-toolbar-freeform-input,
+    .composer-questionnaire-toolbar-stepper-label,
+    .questionnaire-answer-text,
+    .questionnaire-answer-value
+) {
+    text-align: start !important;
+    unicode-bidi: plaintext !important;
+}
+
+/* A/B/C/D letter badges stay upright/LTR (single Latin glyphs). */
+${p}.composer-questionnaire-toolbar-option-letter {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
 }
 `;
 }
