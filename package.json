@@ -65,12 +65,14 @@
     "build": "node esbuild.mjs --production",
     "watch": "node esbuild.mjs --watch",
     "compile": "node esbuild.mjs",
-    "package": "npx @vscode/vsce package"
+    "package": "npx @vscode/vsce package",
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "devDependencies": {
     "@types/vscode": "^1.94.0",
     "@types/node": "^20.0.0",
     "esbuild": "^0.24.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
 }
