@@ -187,6 +187,31 @@ async function handleDiagnose(): Promise<void> {
         const note = r.present ? `${r.hits} hits` : 'MISSING — selector may be stale';
         channel.appendLine(`${mark} ${r.anchor.padEnd(34)} ${note}`);
     }
+
+    channel.appendLine('');
+    channel.appendLine('Patch health');
+    for (const inst of await findCursorInstallations()) {
+        let checksums: Record<string, string> = {};
+        try {
+            const product = JSON.parse(await fs.readFile(inst.productJsonPath, 'utf-8')) as {
+                checksums?: Record<string, string>;
+            };
+            checksums = product.checksums ?? {};
+        } catch { /* reported below as unknown */ }
+
+        for (const entry of inst.entries) {
+            const patched = (await fs.readFile(entry.workbenchHtmlPath, 'utf-8').catch(() => ''))
+                .includes('cursor-chat-rtl.css');
+            const checksumPresent = Boolean(checksums[entry.checksumKey]);
+            channel.appendLine(`  workbench.html patched: ${patched ? 'yes' : 'no'}`);
+            channel.appendLine(`  checksum removed:       ${checksumPresent ? 'NO' : 'yes'}`);
+            if (patched && checksumPresent) {
+                channel.appendLine('  ⚠ Patched HTML with its checksum still present — this is what makes');
+                channel.appendLine('    Cursor say "installation appears to be corrupt".');
+                channel.appendLine('    Fix: run "Cursor Chat RTL: Activate" to heal, then fully restart Cursor.');
+            }
+        }
+    }
     channel.show(true);
 }
 
