@@ -2,6 +2,8 @@
 
 > **Adds an ⇄ toggle button to Cursor IDE chat that instantly switches messages to right-aligned RTL (via CSS) for Hebrew, Arabic, and Persian, while keeping code blocks and UI elements in LTR.**
 
+**Compatibility:** v0.1.8 is verified against **Cursor 3.11.13** (VS Code 1.125.0). Selectors for older Cursor builds are kept as a fallback, so it also works on versions that have not updated yet. Cursor sometimes renames its chat DOM between releases — if RTL stops applying after an update, run **`Cursor Chat RTL: Diagnose Selectors`** from the Command Palette and open an issue with the output.
+
 ---
 
 ## 🌐 Languages | שפות | اللغات | زبان‌ها

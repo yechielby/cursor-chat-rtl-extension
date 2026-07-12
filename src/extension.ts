@@ -168,6 +168,16 @@ async function handleDiagnose(): Promise<void> {
     );
     channel.appendLine('Cursor Chat RTL — selector diagnosis');
     channel.appendLine(`IDE: ${vscode.env.appName}`);
+    try {
+        const product = JSON.parse(
+            await fs.readFile(path.join(vscode.env.appRoot, 'product.json'), 'utf-8'),
+        ) as { version?: string; vscodeVersion?: string; commit?: string };
+        channel.appendLine(
+            `Cursor version: ${product.version ?? '?'} (VS Code ${product.vscodeVersion ?? '?'}, commit ${product.commit?.slice(0, 7) ?? '?'})`,
+        );
+    } catch {
+        channel.appendLine('Cursor version: unknown (product.json unreadable)');
+    }
     channel.appendLine(`Bundle: ${bundlePath}`);
     channel.appendLine('');
 
