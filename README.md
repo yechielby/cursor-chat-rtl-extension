@@ -1,6 +1,8 @@
-# Cursor Chat RTL Support
+﻿# Cursor Chat RTL Support
 
 > **Adds an ⇄ toggle button to Cursor IDE chat that instantly switches messages to right-aligned RTL (via CSS) for Hebrew, Arabic, and Persian, while keeping code blocks and UI elements in LTR.**
+
+> **0.2.x additions:** default-on RTL, broader Agent/Composer selectors, stronger BiDi (Latin-leading Persian lines stay right-aligned). See CHANGELOG.md.
 
 ---
 

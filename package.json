@@ -1,8 +1,8 @@
 {
   "name": "cursor-chat-rtl",
   "displayName": "Cursor Chat RTL Support",
-  "description": "Adds an ⇄ toggle button to Cursor IDE chat for Hebrew, Arabic, and Persian, switching messages to right-aligned RTL via CSS while keeping code blocks and UI in LTR. Patches Cursor workbench files (not VS Code). Restart Cursor after activation.",
-  "version": "0.1.6",
+  "description": "Adds an ⇄ toggle for Cursor IDE chat RTL (Hebrew/Arabic/Persian). Keeps code blocks LTR. 0.2.x: default-on RTL, broader Agent/Composer selectors, stronger BiDi so Latin-leading lines stay RTL. Patches Cursor workbench; restart after Activate.",
+  "version": "0.2.1",
   "publisher": "yechielby",
   "license": "MIT",
   "repository": {

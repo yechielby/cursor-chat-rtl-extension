@@ -265,7 +265,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const ch = getOutputChannel();
         ch.appendLine('Cursor Chat RTL — what this does');
         ch.appendLine('This extension patches Cursor\u2019s own workbench files on disk (workbench.html + CSS/JS).');
-        ch.appendLine('Installing the extension alone does nothing until you run a command.');
+        ch.appendLine('After Activate + full restart, chat RTL is ON by default (⇄ turns it off).');
         ch.appendLine('');
         ch.appendLine('Steps: Command Palette (Ctrl+Shift+P) → "Cursor Chat RTL: Activate" → then fully quit Cursor and reopen (Reload Window is not always enough).');
         ch.appendLine('Then open Output → "Cursor Chat RTL" if a command fails (e.g. permission denied).');
