@@ -29,6 +29,25 @@
 | 🇸🇦 | عربية | <img src="https://flagcdn.com/20x15/sa.png" alt="SA" width="16" height="12"> | [لشرح الملحق بالعربية ↓](#arabic) |
 | 🇮🇷 | فارسی | <img src="https://flagcdn.com/20x15/ir.png" alt="IR" width="16" height="12"> | [برای توضیح افزونه به فارسی ↓](#persian) |
 
+### 🌍 Works with any RTL language — not only the four above
+
+<table>
+<tr>
+<td align="center"><b>اردو</b><br>Urdu</td>
+<td align="center"><b>پښتو</b><br>Pashto</td>
+<td align="center"><b>سنڌي</b><br>Sindhi</td>
+<td align="center"><b>کوردی</b><br>Kurdish (Sorani)</td>
+<td align="center"><b>ئۇيغۇرچە</b><br>Uyghur</td>
+</tr>
+<tr>
+<td align="center"><b>بلوچی</b><br>Balochi</td>
+<td align="center"><b>دری</b><br>Dari</td>
+<td align="center"><b>ייִדיש</b><br>Yiddish</td>
+<td align="center"><b>ދިވެހި</b><br>Dhivehi</td>
+<td align="center"><b>ܣܘܪܝܝܐ</b><br>Syriac</td>
+</tr>
+</table>
+
 ---
 
 ### 🎬 Demo
