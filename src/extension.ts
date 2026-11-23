@@ -3,13 +3,17 @@
  * Does not patch VS Code. Finder only discovers Cursor paths.
  */
 import * as vscode from 'vscode';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { findCursorInstallations } from './finder.js';
-import { addRtl, removeRtl, getStatus, reinjectAssets, isFullyInstalled } from './injector.js';
+import { addRtl, removeRtl, getStatus, reinjectAssets, isFullyInstalled, setMixedTextDetection } from './injector.js';
+import { auditAnchors, KNOWN_ANCHORS } from './diagnose.js';
 import type { RtlMode } from './types.js';
 import { createStatusBarItem, updateStatusBar, disposeStatusBar } from './statusBar.js';
 
 const STATE_MODE_KEY = 'cursorRtl.mode';
 const STATE_VERSION_KEY = 'cursorRtl.version';
+const MIXED_TEXT_SETTING = 'cursorChatRtl.mixedTextDetection';
 
 let outputChannel: vscode.OutputChannel;
 let globalState: vscode.Memento;
@@ -47,10 +51,56 @@ async function promptRestartIfChanged(changed: boolean): Promise<void> {
     }
 }
 
+/**
+ * Warn that no Cursor install was found. In a remote window (WSL / SSH / container) the usual
+ * cause is the extension running on the remote side, where Cursor's app files don't exist.
+ * `extensionKind: ["ui"]` prevents that for fresh installs; this covers older remote installs.
+ */
+function showNotFoundWarning(): void {
+    const remote = vscode.env.remoteName;
+    if (remote) {
+        vscode.window.showWarningMessage(
+            `Cursor Chat RTL is running on the remote side (${remote}), where Cursor's app files are not available. ` +
+            'Open the Extensions view, uninstall it from the remote, and choose "Install Locally".',
+        );
+        return;
+    }
+    vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+}
+
+function readMixedTextSetting(): boolean {
+    return vscode.workspace.getConfiguration().get<boolean>(MIXED_TEXT_SETTING, true);
+}
+
+/**
+ * Rewrite the injected JS when its baked-in options differ from the current settings.
+ * Only the JS file changes (not workbench.html), so a window reload picks it up.
+ */
+async function refreshAssetsForSettings(): Promise<void> {
+    setMixedTextDetection(readMixedTextSetting());
+    if (getSavedMode() !== 'active') return;
+
+    let changed = false;
+    for (const inst of await findCursorInstallations()) {
+        const result = await reinjectAssets(inst);
+        if (result.changed) changed = true;
+    }
+    if (!changed) return;
+
+    const action = await vscode.window.showInformationMessage(
+        'Cursor Chat RTL: Setting updated. Reload the window to apply it.',
+        'Reload Window',
+        'Later',
+    );
+    if (action === 'Reload Window') {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+}
+
 async function handleActivate(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -87,7 +137,7 @@ async function handleActivate(): Promise<void> {
 async function handleRemove(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -124,7 +174,7 @@ async function handleRemove(): Promise<void> {
 async function handleStatus(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -150,6 +200,76 @@ async function handleStatus(): Promise<void> {
 
     channel.show(true);
     await updateStatusBar();
+}
+
+/**
+ * Report which DOM anchors the injected CSS/JS relies on still exist in the
+ * installed Cursor bundle. When a Cursor update breaks RTL, a MISSING "current"
+ * anchor pinpoints the stale selector in seconds.
+ */
+async function handleDiagnose(): Promise<void> {
+    const channel = getOutputChannel();
+    channel.clear();
+    const bundlePath = path.join(
+        vscode.env.appRoot, 'out', 'vs', 'workbench', 'workbench.desktop.main.js',
+    );
+    channel.appendLine('Cursor Chat RTL — selector diagnosis');
+    channel.appendLine(`IDE: ${vscode.env.appName}`);
+    try {
+        const product = JSON.parse(
+            await fs.readFile(path.join(vscode.env.appRoot, 'product.json'), 'utf-8'),
+        ) as { version?: string; vscodeVersion?: string; commit?: string };
+        channel.appendLine(
+            `Cursor version: ${product.version ?? '?'} (VS Code ${product.vscodeVersion ?? '?'}, commit ${product.commit?.slice(0, 7) ?? '?'})`,
+        );
+    } catch {
+        channel.appendLine('Cursor version: unknown (product.json unreadable)');
+    }
+    channel.appendLine(`Bundle: ${bundlePath}`);
+    channel.appendLine('');
+
+    let bundle: string;
+    try {
+        bundle = await fs.readFile(bundlePath, 'utf-8');
+    } catch (e) {
+        channel.appendLine(`ERROR: cannot read bundle — ${(e as Error).message}`);
+        channel.show(true);
+        return;
+    }
+
+    channel.appendLine('(legacy anchors are fallback-only — 0 hits on a modern Cursor is fine)');
+    channel.appendLine('');
+    for (const r of auditAnchors(bundle, KNOWN_ANCHORS)) {
+        const mark = r.present ? '✓' : '✗';
+        const note = r.present ? `${r.hits} hits` : 'MISSING — selector may be stale';
+        channel.appendLine(`${mark} ${r.anchor.padEnd(34)} ${note}`);
+    }
+
+    channel.appendLine('');
+    channel.appendLine('Patch health');
+    for (const inst of await findCursorInstallations()) {
+        let checksums: Record<string, string> = {};
+        try {
+            const product = JSON.parse(await fs.readFile(inst.productJsonPath, 'utf-8')) as {
+                checksums?: Record<string, string>;
+            };
+            checksums = product.checksums ?? {};
+        } catch { /* reported below as unknown */ }
+
+        for (const entry of inst.entries) {
+            const patched = (await fs.readFile(entry.workbenchHtmlPath, 'utf-8').catch(() => ''))
+                .includes('cursor-chat-rtl.css');
+            const checksumPresent = Boolean(checksums[entry.checksumKey]);
+            channel.appendLine(`  workbench.html patched: ${patched ? 'yes' : 'no'}`);
+            channel.appendLine(`  checksum removed:       ${checksumPresent ? 'NO' : 'yes'}`);
+            if (patched && checksumPresent) {
+                channel.appendLine('  ⚠ Patched HTML with its checksum still present — this is what makes');
+                channel.appendLine('    Cursor say "installation appears to be corrupt".');
+                channel.appendLine('    Fix: run "Cursor Chat RTL: Activate" to heal, then fully restart Cursor.');
+            }
+        }
+    }
+    channel.show(true);
 }
 
 async function saveVersion(): Promise<void> {
@@ -227,7 +347,7 @@ async function autoReactivate(): Promise<void> {
 async function handleToggle(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -272,14 +392,25 @@ export function activate(context: vscode.ExtensionContext): void {
         ch.appendLine('');
     }
 
+    setMixedTextDetection(readMixedTextSetting());
+
     const statusBar = createStatusBarItem();
     context.subscriptions.push(statusBar);
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration(MIXED_TEXT_SETTING)) {
+                refreshAssetsForSettings().catch(err => console.error('Cursor RTL settings refresh failed:', err));
+            }
+        }),
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('cursor-rtl.add', handleActivate),
         vscode.commands.registerCommand('cursor-rtl.remove', handleRemove),
         vscode.commands.registerCommand('cursor-rtl.status', handleStatus),
         vscode.commands.registerCommand('cursor-rtl.toggle', handleToggle),
+        vscode.commands.registerCommand('cursor-rtl.diagnose', handleDiagnose),
     );
 
     autoReactivate().catch(err => console.error('Cursor RTL auto-reactivate failed:', err));

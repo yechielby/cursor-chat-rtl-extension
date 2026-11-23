@@ -8,10 +8,21 @@ import {
     CSS_FILENAME,
     JS_FILENAME,
     RTL_CSS,
-    RTL_JS,
     RTL_MODE_ACTIVE_MARKER,
+    buildRtlJs,
 } from './content.js';
 import { exists } from './utils.js';
+
+/** Mirrors the `cursorChatRtl.mixedTextDetection` setting; baked into the JS on every write. */
+let mixedTextDetection = true;
+
+export function setMixedTextDetection(enabled: boolean): void {
+    mixedTextDetection = enabled;
+}
+
+function rtlJs(): string {
+    return buildRtlJs({ mixedTextDetection });
+}
 
 async function isWritable(dir: string): Promise<boolean> {
     try {
@@ -75,24 +86,29 @@ export async function getStatus(installations: CursorInstallation[]): Promise<Rt
     return statuses;
 }
 
-async function removeChecksum(installation: CursorInstallation, checksumKey: string, messages: string[]): Promise<void> {
+/** @returns true if a checksum entry was actually removed. */
+async function removeChecksum(installation: CursorInstallation, checksumKey: string, messages: string[]): Promise<boolean> {
     try {
         const content = await fs.readFile(installation.productJsonPath, 'utf-8');
         const product = JSON.parse(content) as { checksums?: Record<string, string> };
 
         if (product.checksums && product.checksums[checksumKey]) {
             const backupPath = installation.productJsonPath + '.bak';
-            if (!(await exists(backupPath))) {
-                await fs.copyFile(installation.productJsonPath, backupPath);
-                messages.push(`  product.json: Backup created`);
-            }
+            // Refresh the backup every time we are about to edit product.json. A Cursor
+            // update rewrites product.json from scratch, so a backup taken against an
+            // older Cursor would restore the wrong file on deactivate.
+            const backupExisted = await exists(backupPath);
+            await fs.copyFile(installation.productJsonPath, backupPath);
+            messages.push(`  product.json: Backup ${backupExisted ? 'updated' : 'created'}`);
 
             delete product.checksums[checksumKey];
             await fs.writeFile(installation.productJsonPath, JSON.stringify(product, null, '\t'), 'utf-8');
             messages.push(`  product.json: Removed checksum for ${checksumKey}`);
-        } else {
-            messages.push(`  product.json: Checksum already removed or not found (${checksumKey})`);
+            return true;
         }
+
+        messages.push(`  product.json: Checksum already removed or not found (${checksumKey})`);
+        return false;
     } catch (e: unknown) {
         const err = e as NodeJS.ErrnoException;
         if (err.code === 'EPERM' || err.code === 'EACCES') {
@@ -101,7 +117,32 @@ async function removeChecksum(installation: CursorInstallation, checksumKey: str
         } else {
             messages.push(`  product.json: Error: ${err.message}`);
         }
+        return false;
     }
+}
+
+/**
+ * Re-remove checksums for every workbench.html that is currently patched.
+ *
+ * A Cursor update rewrites `product.json` — restoring the `workbench.html`
+ * checksum — while leaving our already-patched `workbench.html` on disk. The
+ * patched HTML then fails the restored checksum and Cursor reports
+ * "Your installation appears to be corrupt" on every launch. Because the HTML
+ * still carries our marker, the install looks complete and the old code path
+ * returned early without ever touching product.json again, so the extension
+ * could never heal itself. This closes that hole.
+ *
+ * @returns true if any checksum had to be removed again.
+ */
+async function ensureChecksumsRemoved(installation: CursorInstallation, messages: string[]): Promise<boolean> {
+    let healed = false;
+    for (const entry of installation.entries) {
+        if (!(await htmlHasMarker(entry.workbenchHtmlPath))) continue;
+        if (await removeChecksum(installation, entry.checksumKey, messages)) {
+            healed = true;
+        }
+    }
+    return healed;
 }
 
 async function restoreProductJson(installation: CursorInstallation, messages: string[]): Promise<void> {
@@ -121,7 +162,7 @@ async function writeAssets(installation: CursorInstallation, messages: string[])
     const cssPath = path.join(installation.workbenchDir, CSS_FILENAME);
     const jsPath = path.join(installation.workbenchDir, JS_FILENAME);
     await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
-    await fs.writeFile(jsPath, RTL_JS, 'utf-8');
+    await fs.writeFile(jsPath, rtlJs(), 'utf-8');
     messages.push(`  CSS/JS: Written to ${installation.workbenchDir}`);
 }
 
@@ -199,15 +240,17 @@ export async function addRtl(
         const current = await readModeFromCssFile(installation);
         if (current === 'active') {
             messages.push(`  RTL already installed — all workbench.html files patched`);
-            return { messages, changed };
+        } else {
+            try {
+                await writeAssets(installation, messages);
+                changed = true;
+            } catch (e: unknown) {
+                messages.push(`  Error updating CSS/JS: ${(e as Error).message}`);
+            }
         }
 
-        try {
-            await writeAssets(installation, messages);
-            changed = true;
-        } catch (e: unknown) {
-            messages.push(`  Error updating CSS/JS: ${(e as Error).message}`);
-        }
+        // A Cursor update may have restored the checksum under our patched HTML.
+        if (await ensureChecksumsRemoved(installation, messages)) changed = true;
 
         return { messages, changed };
     }
@@ -228,6 +271,9 @@ export async function addRtl(
         const ok = await injectIntoWorkbenchHtml(entry, installation, messages);
         if (ok) changed = true;
     }
+
+    // Entries skipped above (already patched) may still carry a restored checksum.
+    if (await ensureChecksumsRemoved(installation, messages)) changed = true;
 
     return { messages, changed };
 }
@@ -318,6 +364,8 @@ export async function reinjectAssets(
         return { messages, changed: false };
     }
 
+    let changed = false;
+
     try {
         const cssPath = path.join(installation.workbenchDir, CSS_FILENAME);
         const jsPath = path.join(installation.workbenchDir, JS_FILENAME);
@@ -326,20 +374,24 @@ export async function reinjectAssets(
         let jsMatch = false;
         try {
             cssMatch = (await fs.readFile(cssPath, 'utf-8')) === RTL_CSS;
-            jsMatch = (await fs.readFile(jsPath, 'utf-8')) === RTL_JS;
+            jsMatch = (await fs.readFile(jsPath, 'utf-8')) === rtlJs();
         } catch { /* file missing — will be written */ }
 
         if (cssMatch && jsMatch) {
             messages.push(`  CSS/JS: Already up to date`);
-            return { messages, changed: false };
+        } else {
+            await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
+            await fs.writeFile(jsPath, rtlJs(), 'utf-8');
+            messages.push(`  CSS/JS: Re-written to ${installation.workbenchDir}`);
+            changed = true;
         }
-
-        await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
-        await fs.writeFile(jsPath, RTL_JS, 'utf-8');
-        messages.push(`  CSS/JS: Re-written to ${installation.workbenchDir}`);
-        return { messages, changed: true };
     } catch (e: unknown) {
         messages.push(`  Reinject failed: ${(e as Error).message}`);
         return { messages, changed: false };
     }
+
+    // A Cursor update may have restored the checksum under our patched HTML.
+    if (await ensureChecksumsRemoved(installation, messages)) changed = true;
+
+    return { messages, changed };
 }

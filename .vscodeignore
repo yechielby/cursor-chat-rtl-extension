@@ -1,6 +1,9 @@
 .vscode/**
 src/**
 node_modules/**
+docs/**
 tsconfig.json
 esbuild.mjs
 **/*.map
+**/*.vsix
+.claude/**
