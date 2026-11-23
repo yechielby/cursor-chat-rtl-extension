@@ -1,6 +1,6 @@
 # Cursor Chat RTL Support
 
-> **Adds an ⇄ toggle button to Cursor IDE chat that instantly switches messages to right-aligned RTL (via CSS) for Hebrew, Arabic, and Persian, while keeping code blocks and UI elements in LTR.**
+> **Adds an ⇄ toggle button to Cursor IDE chat that instantly switches messages to right-aligned RTL (via CSS) for Hebrew, Arabic, Persian, Urdu, and other RTL languages, while keeping code blocks and UI elements in LTR.**
 
 **Compatibility:** v0.1.9 is verified against **Cursor 3.31.15** (VS Code 1.128.0). Selectors for older Cursor builds are kept as a fallback, so it also works on versions that have not updated yet. Cursor sometimes renames its chat DOM between releases — if RTL stops applying after an update, run **`Cursor Chat RTL: Diagnose Selectors`** from the Command Palette and open an issue with the output.
 
@@ -48,7 +48,7 @@ RTL <strong>⇄</strong> Button
 
 ## 🇺🇸 English
 
-A VS Code extension that adds Right-to-Left (RTL) text direction support to the **Cursor IDE** chat interface. It injects CSS/JS into the IDE, which includes backup files. Designed for Hebrew, Arabic, and Persian speakers who want natural text alignment when chatting — without affecting code blocks or UI elements.
+A VS Code extension that adds Right-to-Left (RTL) text direction support to the **Cursor IDE** chat interface. It injects CSS/JS into the IDE, which includes backup files. Designed for speakers of Hebrew, Arabic, Persian, Urdu, and other RTL languages who want natural text alignment when chatting — without affecting code blocks or UI elements.
 
 > **Note:** This extension is for Cursor IDE only. It does not patch VS Code or other editors.
 
@@ -56,7 +56,7 @@ A VS Code extension that adds Right-to-Left (RTL) text direction support to the 
 
 Cursor IDE lacks native RTL support in its chat. This often results in:
 
-- ❌ Hebrew, Arabic, and Persian text appearing misaligned
+- ❌ Hebrew, Arabic, Persian, and other RTL text appearing misaligned
 - ❌ Difficulty reading mixed-language conversations (code + RTL text)
 - ❌ Inconsistent UI behavior in the chat panel
 
@@ -71,6 +71,7 @@ Cursor IDE lacks native RTL support in its chat. This often results in:
 | 🔍 Check Status | Shows whether RTL is currently installed |
 | 📊 Status Bar | Shows current RTL state at a glance — click to toggle |
 | 🔄 Auto-reactivate | Automatically restores RTL after Cursor updates |
+| 🌍 RTL languages | Works with any right-to-left script: Hebrew, Arabic, Persian, Urdu, Pashto, Sindhi, Kurdish (Sorani), Uyghur, Balochi, Dari, Yiddish, Dhivehi, and Syriac |
 
 ---
 
@@ -111,7 +112,7 @@ After activating and restarting Cursor:
 
 The toggle state is saved in `localStorage` and persists across sessions. It applies globally to all chat tabs.
 
-> 💡 **Tip:** Not every conversation needs RTL — you can toggle it per session. Use ⇄ only in conversations where you write in Hebrew, Arabic, or Persian.
+> 💡 **Tip:** Not every conversation needs RTL — you can toggle it per session. Use ⇄ only in conversations where you write in Hebrew, Arabic, Persian, Urdu, or another RTL language.
 
 > 🔄 **Auto-reactivate:** If Cursor updates and replaces its workbench files, RTL is automatically re-injected on the next startup.
 
@@ -205,7 +206,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## 🇮🇱 עברית
 
-תוסף שמוסיף תמיכת כיווניות מימין לשמאל (RTL) לממשק הצ'אט של **Cursor IDE**. התוסף מוסיף CSS/JS ל-IDE וזה כולל קבצי גיבוי. מיועד לדוברי עברית, ערבית ופרסית שרוצים יישור טקסט טבעי בשיחה — מבלי לפגוע בבלוקי קוד או ברכיבי הממשק.
+תוסף שמוסיף תמיכת כיווניות מימין לשמאל (RTL) לממשק הצ'אט של **Cursor IDE**. התוסף מוסיף CSS/JS ל-IDE וזה כולל קבצי גיבוי. מיועד לדוברי עברית, ערבית, פרסית, אורדו ושפות RTL נוספות שרוצים יישור טקסט טבעי בשיחה — מבלי לפגוע בבלוקי קוד או ברכיבי הממשק.
 
 > **הערה:** התוסף הזה מיועד ל-Cursor IDE בלבד. הוא לא משנה את VS Code או עורכים אחרים.
 
@@ -213,7 +214,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ב-Cursor IDE אין תמיכת RTL מובנית בצ'אט. הדבר גורם ל:
 
-- ❌ טקסט עברי, ערבי ופרסי שמוצג בצורה לא מיושרת
+- ❌ טקסט בעברית, ערבית, פרסית ושפות RTL נוספות שמוצג בצורה לא מיושרת
 - ❌ קושי בקריאת שיחות בשפות מעורבות (קוד + טקסט RTL)
 - ❌ התנהגות ממשק לא עקבית בפאנל הצ'אט
 
@@ -228,6 +229,7 @@ MIT — see [LICENSE](LICENSE) for details.
 | 🔍 בדיקת סטטוס | מציג האם RTL מותקן כרגע |
 | 📊 שורת מצב | מציג את המצב הנוכחי בתחתית המסך — לחץ להחלפה |
 | 🔄 הפעלה מחדש אוטומטית | משחזר RTL אוטומטית לאחר עדכוני Cursor |
+| 🌍 שפות RTL | עובד עם כל כתב מימין לשמאל: עברית, ערבית, פרסית, אורדו, פשטו, סינדהי, כורדית (סוראנית), אויגורית, בלוצ'י, דרי, יידיש, דיבהי וסורית |
 
 ---
 
@@ -268,7 +270,7 @@ MIT — see [LICENSE](LICENSE) for details.
 
 מצב הכפתור נשמר ב-localStorage ונשמר בין הפעלות. הוא חל על כל כרטיסיות הצ'אט גלובלית.
 
-> 💡 **טיפ:** לא כל שיחה צריכה RTL — ניתן להחליף לכל session. לחץ ⇄ רק בשיחות שבהן אתה כותב בעברית, ערבית או פרסית.
+> 💡 **טיפ:** לא כל שיחה צריכה RTL — ניתן להחליף לכל session. לחץ ⇄ רק בשיחות שבהן אתה כותב בעברית, ערבית, פרסית, אורדו או שפת RTL אחרת.
 
 > 🔄 **הפעלה מחדש אוטומטית:** אם Cursor מתעדכן ומחליף את קבצי ה-workbench, RTL משוחזר אוטומטית בהפעלה הבאה.
 
@@ -364,7 +366,7 @@ MIT — ראה קובץ [LICENSE](LICENSE) לפרטים.
 
 ## 🇸🇦 عربية
 
-إضافة تضيف دعم اتجاه النص من اليمين إلى اليسار (RTL) لواجهة المحادثة في **Cursor IDE**. تقوم بحقن CSS/JS في الـ IDE، وهذا يشمل ملفات النسخ الاحتياطي. مصممة لمتحدثي العربية والعبرية والفارسية الذين يريدون محاذاة طبيعية للنص — دون التأثير على كتل الكود أو عناصر الواجهة.
+إضافة تضيف دعم اتجاه النص من اليمين إلى اليسار (RTL) لواجهة المحادثة في **Cursor IDE**. تقوم بحقن CSS/JS في الـ IDE، وهذا يشمل ملفات النسخ الاحتياطي. مصممة لمتحدثي العربية والعبرية والفارسية والأردية وغيرها من لغات RTL الذين يريدون محاذاة طبيعية للنص — دون التأثير على كتل الكود أو عناصر الواجهة.
 
 > **ملاحظة:** هذه الإضافة مخصصة لـ Cursor IDE فقط. لا تقوم بتعديل VS Code أو محررات أخرى.
 
@@ -372,7 +374,7 @@ MIT — ראה קובץ [LICENSE](LICENSE) לפרטים.
 
 Cursor IDE يفتقر إلى دعم RTL المدمج في المحادثة. وهذا يؤدي إلى:
 
-- ❌ ظهور النصوص العربية والعبرية والفارسية بمحاذاة غير صحيحة
+- ❌ ظهور النصوص العربية والعبرية والفارسية وغيرها من نصوص RTL بمحاذاة غير صحيحة
 - ❌ صعوبة قراءة المحادثات متعددة اللغات (كود + نص RTL)
 - ❌ سلوك غير متسق لواجهة المستخدم في لوحة المحادثة
 
@@ -387,6 +389,7 @@ Cursor IDE يفتقر إلى دعم RTL المدمج في المحادثة. وه
 | 🔍 فحص الحالة | يعرض ما إذا كان RTL مثبتًا حاليًا |
 | 📊 شريط الحالة | يعرض الحالة الحالية — انقر للتبديل |
 | 🔄 إعادة تفعيل تلقائية | تستعيد RTL تلقائيًا بعد تحديثات Cursor |
+| 🌍 لغات RTL | تعمل مع أي كتابة من اليمين إلى اليسار: العربية، العبرية، الفارسية، الأردية، البشتو، السندية، الكردية (السورانية)، الأويغورية، البلوشية، الدرية، اليديشية، الديفيهية، والسريانية |
 
 ---
 
@@ -427,7 +430,7 @@ Cursor IDE يفتقر إلى دعم RTL المدمج في المحادثة. وه
 
 حالة الزر تُحفظ في localStorage وتستمر بين الجلسات. ينطبق بشكل عام على جميع علامات تبويب المحادثة.
 
-> 💡 **نصيحة:** ليست كل المحادثات تحتاج RTL — يمكنك التبديل لكل جلسة. استخدم ⇄ فقط في المحادثات التي تكتب فيها بالعربية أو العبرية أو الفارسية.
+> 💡 **نصيحة:** ليست كل المحادثات تحتاج RTL — يمكنك التبديل لكل جلسة. استخدم ⇄ فقط في المحادثات التي تكتب فيها بالعربية أو العبرية أو الفارسية أو الأردية أو بلغة RTL أخرى.
 
 > 🔄 **إعادة تفعيل تلقائية:** إذا تم تحديث Cursor واستبدال ملفات workbench، يتم استعادة RTL تلقائيًا عند بدء التشغيل التالي.
 
@@ -523,7 +526,7 @@ MIT — انظر ملف [LICENSE](LICENSE) للتفاصيل.
 
 ## 🇮🇷 فارسی
 
-یک افزونه که پشتیبانی از جهت متن راست به چپ (RTL) را به رابط چت **Cursor IDE** اضافه می‌کند. این افزونه CSS/JS را به IDE تزریق می‌کند، که شامل فایل‌های پشتیبان نیز می‌شود. طراحی شده برای فارسی‌زبانان، عربی‌زبانان و عبری‌زبانان که می‌خواهند تراز متن طبیعی هنگام چت داشته باشند — بدون تأثیر بر بلوک‌های کد یا عناصر رابط کاربری.
+یک افزونه که پشتیبانی از جهت متن راست به چپ (RTL) را به رابط چت **Cursor IDE** اضافه می‌کند. این افزونه CSS/JS را به IDE تزریق می‌کند، که شامل فایل‌های پشتیبان نیز می‌شود. طراحی شده برای فارسی‌زبانان، عربی‌زبانان، عبری‌زبانان، اردوزبانان و گویشوران دیگر زبان‌های راست‌به‌چپ که می‌خواهند تراز متن طبیعی هنگام چت داشته باشند — بدون تأثیر بر بلوک‌های کد یا عناصر رابط کاربری.
 
 > **توجه:** این افزونه فقط برای Cursor IDE است. VS Code یا ویرایشگرهای دیگر را تغییر نمی‌دهد.
 
@@ -531,7 +534,7 @@ MIT — انظر ملف [LICENSE](LICENSE) للتفاصيل.
 
 Cursor IDE فاقد پشتیبانی بومی RTL در چت است. این اغلب منجر به موارد زیر می‌شود:
 
-- ❌ نمایش نامرتب متن فارسی، عربی و عبری
+- ❌ نمایش نامرتب متن فارسی، عربی، عبری و دیگر زبان‌های راست‌به‌چپ
 - ❌ دشواری در خواندن مکالمات چندزبانه (کد + متن RTL)
 - ❌ رفتار ناسازگار رابط کاربری در پنل چت
 
@@ -546,6 +549,7 @@ Cursor IDE فاقد پشتیبانی بومی RTL در چت است. این اغ�
 | 🔍 بررسی وضعیت | نشان می‌دهد آیا RTL در حال حاضر نصب است |
 | 📊 نوار وضعیت | وضعیت فعلی را نمایش می‌دهد — برای تغییر کلیک کنید |
 | 🔄 فعال‌سازی مجدد خودکار | RTL را پس از به‌روزرسانی‌های Cursor به‌طور خودکار بازیابی می‌کند |
+| 🌍 زبان‌های راست‌به‌چپ | با هر خط راست‌به‌چپ کار می‌کند: فارسی، عربی، عبری، اردو، پشتو، سندی، کردی (سورانی)، اویغوری، بلوچی، دری، ییدیش، دیوهی و سریانی |
 
 ---
 
@@ -586,7 +590,7 @@ Cursor IDE فاقد پشتیبانی بومی RTL در چت است. این اغ�
 
 وضعیت دکمه در localStorage ذخیره می‌شود و بین جلسات باقی می‌ماند. به‌صورت عمومی بر همه زبانه‌های چت اعمال می‌شود.
 
-> 💡 **نکته:** همه مکالمات نیاز به RTL ندارند — می‌توانید آن را برای هر جلسه تغییر دهید. از ⇄ فقط در مکالماتی استفاده کنید که به فارسی، عربی یا عبری می‌نویسید.
+> 💡 **نکته:** همه مکالمات نیاز به RTL ندارند — می‌توانید آن را برای هر جلسه تغییر دهید. از ⇄ فقط در مکالماتی استفاده کنید که به فارسی، عربی، عبری، اردو یا زبان راست‌به‌چپ دیگری می‌نویسید.
 
 > 🔄 **فعال‌سازی مجدد خودکار:** اگر Cursor به‌روزرسانی شد و فایل‌های workbench جایگزین شدند، RTL به‌طور خودکار در راه‌اندازی بعدی بازیابی می‌شود.
 

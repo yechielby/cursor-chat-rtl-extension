@@ -197,7 +197,7 @@ ${p}.composer-questionnaire-toolbar-option-letter {
 /**
  * Mixed-text paragraphs. `unicode-bidi: plaintext` picks direction from the FIRST letter,
  * so "Cursor הוא עורך קוד" renders LTR. The injected JS adds `cursor-rtl-mixed` to such
- * paragraphs (Latin first letter, but containing Hebrew/Arabic/Persian); this forces them RTL.
+ * paragraphs (Latin first letter, but containing an RTL letter); this forces them RTL.
  * Gated by the body class like every other RTL rule, so ⇄ still turns it off.
  * The class is repeated to out-rank the `plaintext` rules above (max (0,3,1)) regardless of
  * which container the paragraph sits in. Inline code keeps its own LTR isolate rule.
@@ -532,9 +532,12 @@ export function buildRtlJs(options: RtlJsOptions): string {
     //   - its observer ignores attribute changes, so adding the class can't loop.
 
     var MIXED_CLASS = '${MIXED_CLASS}';
-    var RTL_CHARS = '\\u0590-\\u05FF\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB1D-\\uFDFF\\uFE70-\\uFEFE';
+    // U+0590-U+08FF is RTL scripts only: Hebrew (incl. Yiddish), Arabic (Persian, Urdu,
+    // Pashto, Sindhi, Kurdish, Uyghur, Balochi...), Syriac, Thaana (Dhivehi), N'Ko,
+    // Samaritan, Mandaic. FB1D-FDFF / FE70-FEFE are Hebrew & Arabic presentation forms.
+    var RTL_CHARS = '\\u0590-\\u08FF\\uFB1D-\\uFDFF\\uFE70-\\uFEFE';
     var LTR_LETTERS = 'A-Za-z\\u00C0-\\u024F\\u0370-\\u03FF\\u0400-\\u04FF';
-    // Any Hebrew / Arabic / Persian letter anywhere in the text.
+    // Any RTL letter anywhere in the text.
     var HAS_RTL = new RegExp('[' + RTL_CHARS + ']');
     // First LETTER is RTL (spaces, digits, punctuation, emoji before it are ignored).
     var STARTS_RTL = new RegExp('^[^' + LTR_LETTERS + RTL_CHARS + ']*[' + RTL_CHARS + ']');

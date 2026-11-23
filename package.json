@@ -1,8 +1,8 @@
 {
   "name": "cursor-chat-rtl",
   "displayName": "Cursor Chat RTL Support",
-  "description": "Adds an ⇄ toggle button to Cursor IDE chat for Hebrew, Arabic, and Persian, switching messages to right-aligned RTL via CSS while keeping code blocks and UI in LTR. Patches Cursor workbench files (not VS Code). Restart Cursor after activation.",
-  "version": "0.1.9",
+  "description": "Adds an ⇄ toggle button to Cursor IDE chat for Hebrew, Arabic, Persian, Urdu, and other RTL languages, switching messages to right-aligned RTL via CSS while keeping code blocks and UI in LTR. Patches Cursor workbench files (not VS Code). Restart Cursor after activation.",
+  "version": "0.1.10",
   "publisher": "yechielby",
   "license": "MIT",
   "repository": {
@@ -21,23 +21,33 @@
   ],
   "keywords": [
     "arabic",
+    "balochi",
     "bidi",
     "bidirectional",
     "chat-rtl",
     "cursor",
-    "cursor-app",
     "cursor-ai",
+    "cursor-app",
     "cursor-chat",
     "cursor-ide",
     "cursor-only",
+    "dari",
+    "dhivehi",
     "farsi",
     "hebrew",
+    "kurdish",
+    "pashto",
     "persian",
     "right-to-left",
     "rtl",
+    "rtl-support",
+    "sindhi",
+    "syriac",
     "text-direction",
     "toggle-rtl",
-    "rtl-support"
+    "urdu",
+    "uyghur",
+    "yiddish"
   ],
   "extensionKind": [
     "ui"
@@ -72,7 +82,7 @@
         "cursorChatRtl.mixedTextDetection": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "When RTL is on (⇄), right-align paragraphs that start with an English word but contain Hebrew, Arabic, or Persian text (e.g. `Cursor הוא עורך קוד`). Turn off if it misbehaves or slows the chat. Takes effect after **Reload Window**."
+          "markdownDescription": "When RTL is on (⇄), right-align paragraphs that start with an English word but contain RTL text such as Hebrew, Arabic, Persian, or Urdu (e.g. `Cursor הוא עורך קוד`). Turn off if it misbehaves or slows the chat. Takes effect after **Reload Window**."
         }
       }
     }
