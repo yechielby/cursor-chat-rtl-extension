@@ -2,6 +2,12 @@
 
 All notable changes to **Cursor Chat RTL Support** will be documented in this file.
 
+## [0.1.10] - 2026-11-23
+
+### Added
+- **More RTL languages in mixed-paragraph detection.** The detection now covers the whole U+0590–U+08FF block, so Syriac, Dhivehi (Thaana), N'Ko, Samaritan, and Mandaic are recognized alongside Hebrew and Arabic script. Languages written in Hebrew or Arabic script — Urdu, Pashto, Sindhi, Kurdish (Sorani), Uyghur, Balochi, Dari, Yiddish — already worked and still do. The CSS itself was never language-specific.
+- Description, keywords, `llms.txt`, and README (all four languages) now name these languages, so their speakers can find the extension.
+
 ## [0.1.9] - 2026-11-18
 
 > **Compatibility:** verified against **Cursor 3.31.15** (VS Code 1.128.0).
