@@ -2,18 +2,32 @@
 
 > **Adds an ⇄ toggle button to Cursor IDE chat that instantly switches messages to right-aligned RTL (via CSS) for Hebrew, Arabic, and Persian, while keeping code blocks and UI elements in LTR.**
 
-**Compatibility:** v0.1.8 is verified against **Cursor 3.11.13** (VS Code 1.125.0). Selectors for older Cursor builds are kept as a fallback, so it also works on versions that have not updated yet. Cursor sometimes renames its chat DOM between releases — if RTL stops applying after an update, run **`Cursor Chat RTL: Diagnose Selectors`** from the Command Palette and open an issue with the output.
+**Compatibility:** v0.1.9 is verified against **Cursor 3.31.15** (VS Code 1.128.0). Selectors for older Cursor builds are kept as a fallback, so it also works on versions that have not updated yet. Cursor sometimes renames its chat DOM between releases — if RTL stops applying after an update, run **`Cursor Chat RTL: Diagnose Selectors`** from the Command Palette and open an issue with the output.
+
+![Version](https://img.shields.io/open-vsx/v/yechielby/cursor-chat-rtl?label=Version&color=c160ef)
+![IDE](https://img.shields.io/badge/IDE%20Support-Cursor-007ACC)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+> If you find this extension useful, please rate it on [Open VSX](https://open-vsx.org/extension/yechielby/cursor-chat-rtl/reviews) and [give it a ⭐ on GitHub](https://github.com/yechielby/cursor-chat-rtl-extension) — it helps others discover it!
+
+---
+
+[![GitHub stars](https://img.shields.io/github/stars/yechielby/cursor-chat-rtl-extension?style=social)](https://github.com/yechielby/cursor-chat-rtl-extension)
+[![Open VSX Installs](https://img.shields.io/open-vsx/dt/yechielby/cursor-chat-rtl?label=Open%20VSX:%20downloads&color=c160ef)](https://open-vsx.org/extension/yechielby/cursor-chat-rtl)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-yechielby-0A66C2)](https://www.linkedin.com/in/yechielby/)
+
+💼 Open to new opportunities — [let's connect on LinkedIn](https://www.linkedin.com/in/yechielby/).
 
 ---
 
 ## 🌐 Languages | שפות | اللغات | زبان‌ها
 
-| | Language | Quick Links |
-|---|---|---|
-| 🇺🇸 | English | [View Extension Explanation ↓](#english) |
-| 🇮🇱 | עברית | [להסבר על התוסף בעברית ↓](#hebrew) |
-| 🇸🇦 | عربية | [لشرح الملحق بالعربية ↓](#arabic) |
-| 🇮🇷 | فارسی | [برای توضیح افزونه به فارسی ↓](#persian) |
+| | Language | | Quick Links |
+|---|---|---|---|
+| 🇺🇸 | English | <img src="https://flagcdn.com/20x15/gb.png" alt="GB" width="16" height="12"> | [View Extension Explanation ↓](#english) |
+| 🇮🇱 | עברית | <img src="https://flagcdn.com/20x15/il.png" alt="IL" width="16" height="12"> | [להסבר על התוסף בעברית ↓](#hebrew) |
+| 🇸🇦 | عربية | <img src="https://flagcdn.com/20x15/sa.png" alt="SA" width="16" height="12"> | [لشرح الملحق بالعربية ↓](#arabic) |
+| 🇮🇷 | فارسی | <img src="https://flagcdn.com/20x15/ir.png" alt="IR" width="16" height="12"> | [برای توضیح افزونه به فارسی ↓](#persian) |
 
 ---
 

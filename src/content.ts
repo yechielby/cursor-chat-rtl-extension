@@ -11,6 +11,7 @@ export const RTL_MODE_ACTIVE_MARKER = '/* RTL-MODE: active */';
 
 const BODY_CLASS = 'cursor-chat-rtl';
 const BTN_ID = 'cursor-rtl-toggle-btn';
+const MIXED_CLASS = 'cursor-rtl-mixed';
 
 /** Toggle button + active state */
 const BUTTON_CSS = `
@@ -194,6 +195,27 @@ ${p}.composer-questionnaire-toolbar-option-letter {
 }
 
 /**
+ * Mixed-text paragraphs. `unicode-bidi: plaintext` picks direction from the FIRST letter,
+ * so "Cursor הוא עורך קוד" renders LTR. The injected JS adds `cursor-rtl-mixed` to such
+ * paragraphs (Latin first letter, but containing Hebrew/Arabic/Persian); this forces them RTL.
+ * Gated by the body class like every other RTL rule, so ⇄ still turns it off.
+ * The class is repeated to out-rank the `plaintext` rules above (max (0,3,1)) regardless of
+ * which container the paragraph sits in. Inline code keeps its own LTR isolate rule.
+ * @param p - selector prefix including trailing space
+ */
+function rtlMixedText(p: string): string {
+    return `
+/* --- TEXT: RTL (mixed paragraphs that start with a Latin word) --- */
+
+${p}.${MIXED_CLASS}.${MIXED_CLASS}.${MIXED_CLASS} {
+    direction: rtl !important;
+    unicode-bidi: isolate !important;
+    text-align: right !important;
+}
+`;
+}
+
+/**
  * @param p - selector prefix including trailing space
  */
 function ltrOverrides(p: string): string {
@@ -348,17 +370,26 @@ ${rtlLegacyMarkdown(`body.${BODY_CLASS} `)}
 ${rtlComposerMarkdown(`body.${BODY_CLASS} `)}
 ${rtlAiMarkdown(`body.${BODY_CLASS} `)}
 ${rtlQuestionnaire(`body.${BODY_CLASS} `)}
+${rtlMixedText(`body.${BODY_CLASS} `)}
 ${ltrOverrides(`body.${BODY_CLASS} `)}
 ${OPT_IN_RTL_OVERRIDES}
 /* === CURSOR-CHAT-RTL-END === */
 `;
 
+/** Options baked into the injected JS (the workbench page cannot read Cursor settings). */
+export interface RtlJsOptions {
+    /** `cursorChatRtl.mixedTextDetection` — tag Latin-first paragraphs that contain RTL letters. */
+    mixedTextDetection: boolean;
+}
+
 /** Toggle + localStorage JS */
-export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
+export function buildRtlJs(options: RtlJsOptions): string {
+    return `/* === CURSOR-CHAT-RTL-JS active === */
 (function() {
     var BTN_ID = '${BTN_ID}';
     var BODY_CLASS = '${BODY_CLASS}';
     var STORAGE_KEY = 'cursor-chat-rtl-active';
+    var MIXED_TEXT = ${options.mixedTextDetection ? 'true' : 'false'};
 
     // Anchor every lookup inside the Cursor chat/agent panel so the ⇄ button
     // can never land next to a "+" in Terminal, editor tabs, or other panels.
@@ -437,6 +468,7 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
             var isActive = document.body.classList.toggle(BODY_CLASS);
             btn.classList.toggle('cursor-rtl-active', isActive);
             localStorage.setItem(STORAGE_KEY, isActive ? 'true' : 'false');
+            if (isActive) scanAllMixed();
         });
 
         li.appendChild(btn);
@@ -486,6 +518,131 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
         }
     }
 
+    // -----------------------------------------------------------------
+    // Mixed-text detection (setting: cursorChatRtl.mixedTextDetection)
+    // -----------------------------------------------------------------
+    // CSS gives each paragraph the direction of its FIRST letter, so a
+    // Hebrew paragraph that opens with "Cursor" lands LTR. For the paragraphs
+    // CSS already targets, add MIXED_CLASS when the text contains an RTL letter
+    // but does not start with one; CSS (gated by BODY_CLASS, i.e. the toggle
+    // button) then makes it RTL. Cheap by design:
+    //   - does nothing while the toggle is off;
+    //   - only looks at paragraphs that changed (batched once per frame);
+    //   - never re-checks a paragraph that already has MIXED_CLASS;
+    //   - its observer ignores attribute changes, so adding the class can't loop.
+
+    var MIXED_CLASS = '${MIXED_CLASS}';
+    var RTL_CHARS = '\\u0590-\\u05FF\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB1D-\\uFDFF\\uFE70-\\uFEFE';
+    var LTR_LETTERS = 'A-Za-z\\u00C0-\\u024F\\u0370-\\u03FF\\u0400-\\u04FF';
+    // Any Hebrew / Arabic / Persian letter anywhere in the text.
+    var HAS_RTL = new RegExp('[' + RTL_CHARS + ']');
+    // First LETTER is RTL (spaces, digits, punctuation, emoji before it are ignored).
+    var STARTS_RTL = new RegExp('^[^' + LTR_LETTERS + RTL_CHARS + ']*[' + RTL_CHARS + ']');
+
+    // Exactly the elements the RTL CSS sets to unicode-bidi: plaintext.
+    var BLOCK_TAGS = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, th, td, ' +
+        '.ui-markdown__paragraph, .ui-markdown__list-item, .ui-markdown__heading, ' +
+        '.ui-markdown__blockquote, .ui-markdown__th, .ui-markdown__td';
+    var MIXED_BLOCKS = [
+        '[data-message-role="ai"] :is(' + BLOCK_TAGS + ')',
+        '.markdown-root :is(' + BLOCK_TAGS + ')',
+        '.composer-human-message-container .composer-human-message',
+        '.composer-human-message .aislash-editor-input-readonly',
+        '.composer-questionnaire-toolbar-title',
+        '.composer-questionnaire-toolbar-question',
+        '.composer-questionnaire-toolbar-question-label',
+        '.composer-questionnaire-toolbar-option',
+        '.composer-questionnaire-toolbar-option-label',
+        '.composer-questionnaire-toolbar-stepper-label',
+        '.questionnaire-answer-text',
+        '.questionnaire-answer-value'
+    ].join(', ');
+    var MIXED_SCOPE = '[data-message-role="ai"], .markdown-root, .composer-human-message, .composer-questionnaire-toolbar';
+    // Code renders as LTR isolates, which the browser skips when it picks a
+    // paragraph's direction, so skip its text here too.
+    var CODE_SEL = 'pre, code, .ui-markdown__inline-code, .ui-code-block';
+
+    function directionText(el) {
+        if (!el.querySelector(CODE_SEL)) return el.textContent || '';
+        var out = '';
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        var node;
+        while ((node = walker.nextNode())) {
+            var code = node.parentElement && node.parentElement.closest(CODE_SEL);
+            if (code && el.contains(code)) continue;
+            out += node.nodeValue;
+        }
+        return out;
+    }
+
+    function checkBlock(el) {
+        if (el.classList.contains(MIXED_CLASS)) return;   // already tagged
+        var text = directionText(el);
+        if (!HAS_RTL.test(text)) return;                  // no RTL letters: leave as is
+        if (STARTS_RTL.test(text)) return;                // CSS already handles it
+        el.classList.add(MIXED_CLASS);
+    }
+
+    function isRtlOn() {
+        return !!document.body && document.body.classList.contains(BODY_CLASS);
+    }
+
+    var pendingNodes = new Set();
+    var flushScheduled = false;
+
+    function queueNode(node) {
+        pendingNodes.add(node);
+        if (!flushScheduled) {
+            flushScheduled = true;
+            requestAnimationFrame(flushMixed);
+        }
+    }
+
+    function flushMixed() {
+        flushScheduled = false;
+        var nodes = pendingNodes;
+        pendingNodes = new Set();
+        if (!isRtlOn()) return;
+        var blocks = new Set();
+        nodes.forEach(function(node) {
+            if (!node.isConnected) return;
+            var el = node.nodeType === 1 ? node : node.parentElement;
+            if (!el) return;
+            // The paragraph that contains the change...
+            var block = el.closest(MIXED_BLOCKS);
+            if (block) blocks.add(block);
+            // ...and paragraphs inside a newly added chat subtree.
+            if (node.nodeType === 1 && (el.closest(MIXED_SCOPE) || el.querySelector(MIXED_SCOPE))) {
+                var inner = el.querySelectorAll(MIXED_BLOCKS);
+                for (var i = 0; i < inner.length; i++) blocks.add(inner[i]);
+            }
+        });
+        blocks.forEach(checkBlock);
+    }
+
+    function scanAllMixed() {
+        if (!MIXED_TEXT || !document.body) return;
+        queueNode(document.body);
+    }
+
+    function startMixedObserver() {
+        if (!MIXED_TEXT) return;
+        var observer = new MutationObserver(function(records) {
+            if (!isRtlOn()) return;
+            for (var i = 0; i < records.length; i++) {
+                var r = records[i];
+                queueNode(r.target);
+                for (var j = 0; j < r.addedNodes.length; j++) {
+                    if (r.addedNodes[j].nodeType === 1) queueNode(r.addedNodes[j]);
+                }
+            }
+        });
+        // characterData: streamed replies grow text in place.
+        // No attributes: our own class changes must not re-trigger us.
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        scanAllMixed();
+    }
+
     function start() {
         applyBodyClassFromStorage();
         tryInsertButton();
@@ -495,6 +652,7 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
             tryInsertCodeBlockButtons();
         });
         observer.observe(document.body, { childList: true, subtree: true });
+        startMixedObserver();
     }
 
     if (document.readyState !== 'loading') {
@@ -504,3 +662,4 @@ export const RTL_JS = `/* === CURSOR-CHAT-RTL-JS active === */
     }
 })();
 `;
+}

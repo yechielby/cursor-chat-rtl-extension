@@ -2,6 +2,35 @@
 
 All notable changes to **Cursor Chat RTL Support** will be documented in this file.
 
+## [0.1.9] - 2026-11-18
+
+> **Compatibility:** verified against **Cursor 3.31.15** (VS Code 1.128.0).
+
+### Fixed
+- **"Cursor IDE not found" in WSL / SSH / Dev Container windows** ([#1](https://github.com/yechielby/cursor-chat-rtl-extension/issues/1)). In a remote window the extension ran on the remote side, where Cursor's app files don't exist. It is now a UI extension (`extensionKind: ["ui"]`), so it always runs locally next to the Cursor install it patches. If an older copy is still installed on the remote, the warning now says so and points to "Install Locally".
+- **Hebrew/Arabic/Persian paragraphs that start with an English word rendered LTR** (e.g. `Cursor הוא עורך קוד`). Direction was taken from the first letter only. When RTL is on, the injected script now tags such paragraphs (contains an RTL letter, but its first letter is Latin) with a class that the CSS turns RTL. Paragraphs that start with an RTL letter, and paragraphs with no RTL letters at all, are untouched. Thanks to [#2](https://github.com/yechielby/cursor-chat-rtl-extension/pull/2) for reporting the case.
+
+### Added
+- **`cursorChatRtl.mixedTextDetection` setting** (default on) — turns the mixed-paragraph detection off if it misbehaves or slows the chat. Takes effect after Reload Window.
+
+## [0.1.8] - 2026-07-12
+
+> **Compatibility:** verified against **Cursor 3.11.13** (VS Code 1.125.0). Selectors for older Cursor builds are kept as a fallback, so this release also works on versions that have not updated yet.
+
+### Fixed
+- **"Your Cursor installation appears to be corrupt" after a Cursor update.** A Cursor update rewrites `product.json` — restoring the `workbench.html` checksum — while leaving the already-patched `workbench.html` in place. The patched HTML then fails the restored checksum. Because the HTML still carried the RTL marker, the extension considered itself fully installed and returned early without ever touching `product.json` again, so it could never heal itself. Activation and asset-reinjection now always re-remove the checksum for any patched `workbench.html`. The `product.json` backup is also refreshed on each patch, so deactivation restores the *current* Cursor's file rather than a stale one.
+- **RTL restored for AI responses.** A Cursor update moved AI chat content out of `.composer-rendered-message`, so RTL alignment stopped applying (the ⇄ button appeared but AI text stayed LTR). The extension now anchors on the current `[data-message-role="ai"]` / `.markdown-root` structure — with the old selectors kept as a fallback for un-updated Cursor.
+- **Per-code-block ⇄ toggle works again.** The toggle now finds the code block via `.ui-code-block` (its container was renamed from `.composer-message-codeblock`).
+- **Code stays LTR reliably.** LTR guards re-anchored on `.ui-code-block` / `.ui-default-code__line-content`, replacing the removed `.composer-code-block-container` / `.composer-diff-block` / `.composer-terminal-output`.
+
+### Added
+- **Questions panel RTL** — the full card (title, question, A/B/C/D options, Skip / Continue actions, stepper) now follows RTL, with text auto-directioned by content.
+- **`Cursor Chat RTL: Diagnose Selectors` command** — reports which DOM anchors still exist in the installed Cursor, so future breakage can be pinpointed in seconds (Command Palette → search "Diagnose"). It also reports patch health: whether `workbench.html` is patched and whether its checksum was removed — the exact combination behind the "corrupt installation" warning.
+
+### Notes
+- AI text direction is automatic **per block**: a block whose text is Hebrew aligns right; a block that is entirely English stays LTR. Code blocks stay LTR until you click their per-block ⇄ toggle.
+- All new selectors are additive — old selectors remain as a fallback, so users on older Cursor versions keep working.
+
 ## [0.1.7] - 2026-06-12
 
 ### Added

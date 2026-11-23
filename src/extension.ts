@@ -6,13 +6,14 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { findCursorInstallations } from './finder.js';
-import { addRtl, removeRtl, getStatus, reinjectAssets, isFullyInstalled } from './injector.js';
+import { addRtl, removeRtl, getStatus, reinjectAssets, isFullyInstalled, setMixedTextDetection } from './injector.js';
 import { auditAnchors, KNOWN_ANCHORS } from './diagnose.js';
 import type { RtlMode } from './types.js';
 import { createStatusBarItem, updateStatusBar, disposeStatusBar } from './statusBar.js';
 
 const STATE_MODE_KEY = 'cursorRtl.mode';
 const STATE_VERSION_KEY = 'cursorRtl.version';
+const MIXED_TEXT_SETTING = 'cursorChatRtl.mixedTextDetection';
 
 let outputChannel: vscode.OutputChannel;
 let globalState: vscode.Memento;
@@ -50,10 +51,56 @@ async function promptRestartIfChanged(changed: boolean): Promise<void> {
     }
 }
 
+/**
+ * Warn that no Cursor install was found. In a remote window (WSL / SSH / container) the usual
+ * cause is the extension running on the remote side, where Cursor's app files don't exist.
+ * `extensionKind: ["ui"]` prevents that for fresh installs; this covers older remote installs.
+ */
+function showNotFoundWarning(): void {
+    const remote = vscode.env.remoteName;
+    if (remote) {
+        vscode.window.showWarningMessage(
+            `Cursor Chat RTL is running on the remote side (${remote}), where Cursor's app files are not available. ` +
+            'Open the Extensions view, uninstall it from the remote, and choose "Install Locally".',
+        );
+        return;
+    }
+    vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+}
+
+function readMixedTextSetting(): boolean {
+    return vscode.workspace.getConfiguration().get<boolean>(MIXED_TEXT_SETTING, true);
+}
+
+/**
+ * Rewrite the injected JS when its baked-in options differ from the current settings.
+ * Only the JS file changes (not workbench.html), so a window reload picks it up.
+ */
+async function refreshAssetsForSettings(): Promise<void> {
+    setMixedTextDetection(readMixedTextSetting());
+    if (getSavedMode() !== 'active') return;
+
+    let changed = false;
+    for (const inst of await findCursorInstallations()) {
+        const result = await reinjectAssets(inst);
+        if (result.changed) changed = true;
+    }
+    if (!changed) return;
+
+    const action = await vscode.window.showInformationMessage(
+        'Cursor Chat RTL: Setting updated. Reload the window to apply it.',
+        'Reload Window',
+        'Later',
+    );
+    if (action === 'Reload Window') {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+}
+
 async function handleActivate(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -90,7 +137,7 @@ async function handleActivate(): Promise<void> {
 async function handleRemove(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -127,7 +174,7 @@ async function handleRemove(): Promise<void> {
 async function handleStatus(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -300,7 +347,7 @@ async function autoReactivate(): Promise<void> {
 async function handleToggle(): Promise<void> {
     const installations = await findCursorInstallations();
     if (installations.length === 0) {
-        vscode.window.showWarningMessage('Cursor IDE not found on this machine.');
+        showNotFoundWarning();
         return;
     }
 
@@ -345,8 +392,18 @@ export function activate(context: vscode.ExtensionContext): void {
         ch.appendLine('');
     }
 
+    setMixedTextDetection(readMixedTextSetting());
+
     const statusBar = createStatusBarItem();
     context.subscriptions.push(statusBar);
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration(MIXED_TEXT_SETTING)) {
+                refreshAssetsForSettings().catch(err => console.error('Cursor RTL settings refresh failed:', err));
+            }
+        }),
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('cursor-rtl.add', handleActivate),

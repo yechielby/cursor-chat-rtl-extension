@@ -8,10 +8,21 @@ import {
     CSS_FILENAME,
     JS_FILENAME,
     RTL_CSS,
-    RTL_JS,
     RTL_MODE_ACTIVE_MARKER,
+    buildRtlJs,
 } from './content.js';
 import { exists } from './utils.js';
+
+/** Mirrors the `cursorChatRtl.mixedTextDetection` setting; baked into the JS on every write. */
+let mixedTextDetection = true;
+
+export function setMixedTextDetection(enabled: boolean): void {
+    mixedTextDetection = enabled;
+}
+
+function rtlJs(): string {
+    return buildRtlJs({ mixedTextDetection });
+}
 
 async function isWritable(dir: string): Promise<boolean> {
     try {
@@ -151,7 +162,7 @@ async function writeAssets(installation: CursorInstallation, messages: string[])
     const cssPath = path.join(installation.workbenchDir, CSS_FILENAME);
     const jsPath = path.join(installation.workbenchDir, JS_FILENAME);
     await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
-    await fs.writeFile(jsPath, RTL_JS, 'utf-8');
+    await fs.writeFile(jsPath, rtlJs(), 'utf-8');
     messages.push(`  CSS/JS: Written to ${installation.workbenchDir}`);
 }
 
@@ -363,14 +374,14 @@ export async function reinjectAssets(
         let jsMatch = false;
         try {
             cssMatch = (await fs.readFile(cssPath, 'utf-8')) === RTL_CSS;
-            jsMatch = (await fs.readFile(jsPath, 'utf-8')) === RTL_JS;
+            jsMatch = (await fs.readFile(jsPath, 'utf-8')) === rtlJs();
         } catch { /* file missing — will be written */ }
 
         if (cssMatch && jsMatch) {
             messages.push(`  CSS/JS: Already up to date`);
         } else {
             await fs.writeFile(cssPath, RTL_CSS, 'utf-8');
-            await fs.writeFile(jsPath, RTL_JS, 'utf-8');
+            await fs.writeFile(jsPath, rtlJs(), 'utf-8');
             messages.push(`  CSS/JS: Re-written to ${installation.workbenchDir}`);
             changed = true;
         }
